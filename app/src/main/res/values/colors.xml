@@ -1,10 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
+    <color name="bg">#FF0F172A</color>
+    <color name="card">#FF111827</color>
+    <color name="card_surface">#FF1E293B</color>
+    <color name="text_primary">#FFE5E7EB</color>
+    <color name="text_secondary">#FF9CA3AF</color>
+    <color name="primary">#FF22D3EE</color>
+    <color name="primary_dark">#FF0EA5E9</color>
+    <color name="accent">#FF60A5FA</color>
+    <color name="success">#FF34D399</color>
+    <color name="danger">#FFF87171</color>
+    <color name="border">#FF1F2937</color>
+    <color name="input_bg">#FF0B1220</color>
+    <color name="overlay">#99020617</color>
+    <color name="card_hover">#0DFFFFFF</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="transparent">#00000000</color>
+    <color name="primary_10">#1A22D3EE</color>
+    <color name="danger_10">#1AF87171</color>
+    <color name="success_10">#1A34D399</color>
+    <color name="warning">#FFE6A23C</color>
+    <color name="warning_10">#1AE6A23C</color>
 </resources>

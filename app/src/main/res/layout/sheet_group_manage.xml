@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/manage_groups"
+        android:textColor="@color/text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerGroups"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:layout_weight="1" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAddGroup"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_button_secondary"
+        android:text="@string/new_group"
+        android:textColor="@color/text_primary" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSaveGroups"
+        style="@style/Widget.FundMobile.Button"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:text="@string/save" />
+
+</LinearLayout>

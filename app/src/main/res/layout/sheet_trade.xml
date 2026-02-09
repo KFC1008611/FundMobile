@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvFundNameCode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvRefNav"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:id="@+id/layoutBuy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical">
+
+            <EditText
+                android:id="@+id/etBuyAmount"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_input"
+                android:hint="@string/buy_amount"
+                android:inputType="numberDecimal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary" />
+
+            <EditText
+                android:id="@+id/etBuyFeeRate"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_input"
+                android:hint="@string/buy_fee_rate"
+                android:inputType="numberDecimal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary" />
+
+            <TextView
+                android:id="@+id/btnBuyDate"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_input"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/trade_date"
+                android:textColor="@color/text_primary" />
+
+            <RadioGroup
+                android:id="@+id/groupBuyPeriod"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/rbBuyBefore"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/primary"
+                    android:checked="true"
+                    android:text="@string/before_3pm"
+                    android:textColor="@color/text_primary" />
+
+                <RadioButton
+                    android:id="@+id/rbBuyAfter"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/primary"
+                    android:text="@string/after_3pm"
+                    android:textColor="@color/text_primary" />
+            </RadioGroup>
+
+            <TextView
+                android:id="@+id/tvEstimatedShares"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textColor="@color/accent"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layoutSell"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/etSellShare"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_input"
+                android:hint="@string/sell_shares"
+                android:inputType="numberDecimal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary" />
+
+            <RadioGroup
+                android:id="@+id/groupSellFeeMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/rbFeeRate"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/primary"
+                    android:checked="true"
+                    android:text="费率"
+                    android:textColor="@color/text_primary" />
+
+                <RadioButton
+                    android:id="@+id/rbFeeAmount"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/primary"
+                    android:text="金额"
+                    android:textColor="@color/text_primary" />
+            </RadioGroup>
+
+            <EditText
+                android:id="@+id/etSellFee"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_input"
+                android:hint="@string/sell_fee"
+                android:inputType="numberDecimal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnQuarter"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="4dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_button_secondary"
+                    android:text="1/4"
+                    android:textColor="@color/text_primary" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnThird"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="2dp"
+                    android:layout_marginEnd="2dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_button_secondary"
+                    android:text="1/3"
+                    android:textColor="@color/text_primary" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnHalf"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="2dp"
+                    android:layout_marginEnd="2dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_button_secondary"
+                    android:text="1/2"
+                    android:textColor="@color/text_primary" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAll"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_button_secondary"
+                    android:text="全部"
+                    android:textColor="@color/text_primary" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btnSellDate"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_input"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/trade_date"
+                android:textColor="@color/text_primary" />
+
+            <RadioGroup
+                android:id="@+id/groupSellPeriod"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/rbSellBefore"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/primary"
+                    android:checked="true"
+                    android:text="@string/before_3pm"
+                    android:textColor="@color/text_primary" />
+
+                <RadioButton
+                    android:id="@+id/rbSellAfter"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/primary"
+                    android:text="@string/after_3pm"
+                    android:textColor="@color/text_primary" />
+            </RadioGroup>
+
+            <TextView
+                android:id="@+id/tvEstimatedReturn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textColor="@color/accent"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layoutConfirm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_input"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="确认信息"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tvConfirmSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancel"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_button_secondary"
+                android:text="@string/cancel"
+                android:textColor="@color/text_primary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnConfirm"
+                style="@style/Widget.FundMobile.Button"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:text="@string/confirm" />
+        </LinearLayout>
+    </LinearLayout>
+
+</ScrollView>

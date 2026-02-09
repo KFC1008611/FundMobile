@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    android:background="@drawable/bg_input"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="10dp">
+
+    <ImageView
+        android:id="@+id/ivDrag"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:src="@drawable/ic_drag"
+        android:tint="@color/text_secondary" />
+
+    <EditText
+        android:id="@+id/etGroupName"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:background="@android:color/transparent"
+        android:hint="@string/group_name_hint"
+        android:maxLength="8"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_secondary" />
+
+    <ImageButton
+        android:id="@+id/btnDeleteGroup"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:background="@android:color/transparent"
+        android:src="@drawable/ic_delete"
+        android:tint="@color/danger" />
+
+</LinearLayout>

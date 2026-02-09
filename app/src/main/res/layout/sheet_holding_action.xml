@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tvFundNameCode"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnBuy"
+        style="@style/Widget.FundMobile.Button"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="16dp"
+        android:text="@string/buy" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSell"
+        style="@style/Widget.FundMobile.Button"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:text="@string/sell" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnEditHolding"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_button_secondary"
+        android:text="@string/edit_holding"
+        android:textColor="@color/text_primary" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnClearHolding"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_button_danger"
+        android:text="@string/clear_holding"
+        android:textColor="@color/bg" />
+
+</LinearLayout>

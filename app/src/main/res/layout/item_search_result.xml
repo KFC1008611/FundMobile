@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_input"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvFundName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvFundCodeType"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvAdded"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_badge"
+        android:paddingStart="8dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="4dp"
+        android:text="@string/already_added"
+        android:textColor="@color/text_secondary"
+        android:textSize="10sp"
+        android:visibility="gone" />
+
+    <CheckBox
+        android:id="@+id/checkSelect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="@color/primary" />
+
+</LinearLayout>

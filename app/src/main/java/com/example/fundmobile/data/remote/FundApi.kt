@@ -1,0 +1,298 @@
+package com.example.fundmobile.data.remote
+
+import com.example.fundmobile.data.model.FundData
+import com.example.fundmobile.data.model.SearchResult
+import com.example.fundmobile.data.model.StockHolding
+import com.google.gson.Gson
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import org.jsoup.Jsoup
+
+object FundApi {
+    private val gson = Gson()
+    private val chinaZone: ZoneId = ZoneId.of("Asia/Shanghai")
+    private val dateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+    suspend fun fetchFundGz(code: String): FundGzResult? {
+        return runCatching {
+            val url = "https://fundgz.1234567.com.cn/js/$code.js?rt=${System.currentTimeMillis()}"
+            val raw = HttpClient.getString(url)
+            val json = JsonpParser.extractJson(raw)
+            gson.fromJson(json, FundGzResult::class.java)
+        }.getOrNull()
+    }
+
+    suspend fun fetchTencentFundQuote(code: String): TencentFundQuote? {
+        return runCatching {
+            val raw = HttpClient.getStringAutoCharset("https://qt.gtimg.cn/q=jj$code")
+            val value = JsonpParser.extractQuotedValue(raw, "v_jj$code") ?: return@runCatching null
+            val parts = value.split("~")
+            val dwjz = parts.getOrNull(5)?.takeIf { it.isNotBlank() }
+            val zzl = parts.getOrNull(7)?.toDoubleOrNull()
+            val jzrq = parts.getOrNull(8)?.take(10)?.takeIf { it.isNotBlank() }
+            TencentFundQuote(dwjz = dwjz, zzl = zzl, jzrq = jzrq)
+        }.getOrNull()
+    }
+
+    suspend fun fetchFundHoldings(code: String): List<StockHolding> {
+        return runCatching {
+            val url = "https://fundf10.eastmoney.com/FundArchivesDatas.aspx?type=jjcc&code=$code&topline=10&year=&month=&_=${System.currentTimeMillis()}"
+            val raw = HttpClient.getString(url)
+            val varContent = JsonpParser.extractVarContent(raw, "apidata") ?: return@runCatching emptyList()
+            val html = extractContentField(varContent) ?: return@runCatching emptyList()
+            parseHoldingsHtml(html)
+        }.getOrElse { emptyList() }
+    }
+
+    suspend fun fetchStockQuotes(stockCodes: List<String>): Map<String, Double> {
+        if (stockCodes.isEmpty()) return emptyMap()
+
+        val symbolToCode = stockCodes.mapNotNull { code ->
+            val symbol = toTencentStockSymbol(code) ?: return@mapNotNull null
+            symbol to code
+        }.toMap()
+
+        if (symbolToCode.isEmpty()) return emptyMap()
+
+        return runCatching {
+            val query = symbolToCode.keys.joinToString(",")
+            val raw = HttpClient.getStringAutoCharset("https://qt.gtimg.cn/q=$query")
+            buildMap {
+                symbolToCode.forEach { (symbol, code) ->
+                    val value = JsonpParser.extractQuotedValue(raw, "v_$symbol") ?: return@forEach
+                    val change = value.split("~").getOrNull(5)?.toDoubleOrNull() ?: return@forEach
+                    put(code, change)
+                }
+            }
+        }.getOrElse { emptyMap() }
+    }
+
+    suspend fun searchFunds(query: String): List<SearchResult> {
+        if (query.isBlank()) return emptyList()
+        return runCatching {
+            val callback = "cb"
+            val encoded = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8.toString())
+            val url = "https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx?m=1&key=$encoded&callback=$callback&_=${System.currentTimeMillis()}"
+            val raw = HttpClient.getString(url)
+            val json = JsonpParser.extractJson(raw)
+            val wrapper = gson.fromJson(json, SearchWrapper::class.java)
+            wrapper.Datas.orEmpty().filter {
+                val category = it.CATEGORY?.toString()
+                category == "700" || it.CATEGORYDESC == "基金"
+            }
+        }.getOrElse { emptyList() }
+    }
+
+    suspend fun fetchFundNetValue(code: String, date: String): Double? {
+        return runCatching {
+            val url = "https://fundf10.eastmoney.com/F10DataApi.aspx?type=lsjz&code=$code&page=1&per=1&sdate=$date&edate=$date"
+            val raw = HttpClient.getString(url)
+            val varContent = JsonpParser.extractVarContent(raw, "apidata") ?: return@runCatching null
+            val html = extractContentField(varContent) ?: return@runCatching null
+            parseNetValueFromHtml(html, date)
+        }.getOrNull()
+    }
+
+    suspend fun fetchSmartFundNetValue(code: String, startDate: String): Pair<String, Double>? {
+        val start = runCatching { LocalDate.parse(startDate, dateFmt) }.getOrNull() ?: return null
+        val today = LocalDate.now(chinaZone)
+        var current = start
+
+        repeat(30) {
+            if (current.isAfter(today)) return null
+            val dateStr = current.format(dateFmt)
+            val value = fetchFundNetValue(code, dateStr)
+            if (value != null) return dateStr to value
+            current = current.plusDays(1)
+        }
+        return null
+    }
+
+    suspend fun fetchShanghaiIndexDate(): String? {
+        return runCatching {
+            val raw = HttpClient.getStringAutoCharset("https://qt.gtimg.cn/q=sh000001&_t=${System.currentTimeMillis()}")
+            val value = JsonpParser.extractQuotedValue(raw, "v_sh000001") ?: return@runCatching null
+            value.split("~").getOrNull(30)?.take(8)?.takeIf { it.length == 8 }
+        }.getOrNull()
+    }
+
+    suspend fun fetchFundData(code: String): FundData {
+        val gzData = fetchFundGz(code)
+        if (gzData?.fundcode.isNullOrBlank()) {
+            return fetchFundDataFallback(code)
+        }
+
+        return coroutineScope {
+            val tencentDeferred = async { fetchTencentFundQuote(code) }
+            val holdingsDeferred = async {
+                val holdings = fetchFundHoldings(code)
+                if (holdings.isEmpty()) return@async holdings
+                val quotes = fetchStockQuotes(holdings.map { it.code })
+                holdings.map { holding ->
+                    val change = quotes[holding.code]
+                    holding.copy(change = change)
+                }
+            }
+
+            val tencent = runCatching { tencentDeferred.await() }.getOrNull()
+            val holdings = runCatching { holdingsDeferred.await() }.getOrDefault(emptyList())
+
+            var dwjz = gzData?.dwjz
+            var jzrq = gzData?.jzrq
+            var zzl: Double? = null
+
+            if (!tencent?.dwjz.isNullOrBlank()) {
+                val tencentDate = tencent?.jzrq
+                val baseDate = jzrq
+                val shouldUseTencent = !tencentDate.isNullOrBlank() &&
+                    (baseDate.isNullOrBlank() || tencentDate >= baseDate)
+                if (shouldUseTencent) {
+                    dwjz = tencent?.dwjz
+                    jzrq = tencentDate
+                    zzl = tencent?.zzl
+                }
+            }
+
+            FundData(
+                code = gzData?.fundcode ?: code,
+                name = gzData?.name ?: code,
+                dwjz = dwjz,
+                gsz = gzData?.gsz,
+                gztime = gzData?.gztime,
+                jzrq = jzrq,
+                gszzl = gzData?.gszzl?.toDoubleOrNull(),
+                zzl = zzl,
+                noValuation = false,
+                holdings = holdings
+            )
+        }
+    }
+
+    suspend fun fetchFundDataFallback(code: String): FundData {
+        val quote = fetchTencentFundQuote(code)
+        val name = searchFunds(code).firstOrNull { it.CODE == code }?.NAME ?: code
+        return FundData(
+            code = code,
+            name = name,
+            dwjz = quote?.dwjz,
+            gsz = null,
+            gztime = null,
+            jzrq = quote?.jzrq,
+            gszzl = null,
+            zzl = quote?.zzl,
+            noValuation = true,
+            holdings = emptyList()
+        )
+    }
+
+    private fun parseHoldingsHtml(html: String): List<StockHolding> {
+        if (html.isBlank() || html.contains("暂无数据")) return emptyList()
+        return runCatching {
+            val document = Jsoup.parse(html)
+            val headers = document.select("thead tr th").map { it.text().replace("\\s+".toRegex(), "") }
+            var idxCode = -1
+            var idxName = -1
+            var idxWeight = -1
+
+            headers.forEachIndexed { index, text ->
+                if (idxCode < 0 && (text.contains("股票代码") || text.contains("证券代码"))) idxCode = index
+                if (idxName < 0 && (text.contains("股票名称") || text.contains("证券名称"))) idxName = index
+                if (idxWeight < 0 && (text.contains("占净值比例") || text.contains("占比"))) idxWeight = index
+            }
+
+            val rows = document.select("tbody tr").ifEmpty { document.select("tr") }
+            rows.mapNotNull { row ->
+                val cells = row.select("td")
+                if (cells.isEmpty()) return@mapNotNull null
+                val texts = cells.map { it.text().trim() }
+
+                val codeText = when {
+                    idxCode >= 0 && idxCode < texts.size -> texts[idxCode]
+                    else -> texts.firstOrNull { Regex("^\\d{6}$").matches(it) }
+                }.orEmpty()
+
+                val code = Regex("(\\d{6})").find(codeText)?.groupValues?.getOrNull(1) ?: codeText
+
+                val name = when {
+                    idxName >= 0 && idxName < texts.size -> texts[idxName]
+                    else -> texts.firstOrNull { it.isNotBlank() && it != code && !it.contains("%") }.orEmpty()
+                }
+
+                val weightText = when {
+                    idxWeight >= 0 && idxWeight < texts.size -> texts[idxWeight]
+                    else -> texts.firstOrNull { it.contains("%") }.orEmpty()
+                }
+                val weight = Regex("([\\d.]+)\\s*%")
+                    .find(weightText)
+                    ?.groupValues
+                    ?.getOrNull(1)
+                    ?.let { "$it%" }
+                    ?: weightText
+
+                if (code.isBlank() && name.isBlank() && weight.isBlank()) {
+                    null
+                } else {
+                    StockHolding(code = code, name = name, weight = weight, change = null)
+                }
+            }.take(10)
+        }.getOrElse { emptyList() }
+    }
+
+    private fun parseNetValueFromHtml(html: String, date: String): Double? {
+        if (html.isBlank() || html.contains("暂无数据")) return null
+        return runCatching {
+            val document = Jsoup.parse(html)
+            for (row in document.select("tr")) {
+                val tds = row.select("td")
+                if (tds.size >= 2 && tds[0].text().trim() == date) {
+                    return@runCatching tds[1].text().trim().toDoubleOrNull()
+                }
+            }
+            null
+        }.getOrNull()
+    }
+
+    private fun extractContentField(varContent: String): String? {
+        val regex = Regex("""content\s*:\s*"((?:\\\\.|[^"\\\\])*)""", RegexOption.DOT_MATCHES_ALL)
+        val raw = regex.find(varContent)?.groupValues?.getOrNull(1) ?: return null
+        return runCatching {
+            gson.fromJson("\"$raw\"", String::class.java)
+        }.recoverCatching {
+            raw.replace("\\\\\"", "\"").replace("\\\\/", "/")
+        }.getOrNull()
+    }
+
+    private fun toTencentStockSymbol(code: String): String? {
+        val clean = code.trim()
+        if (!Regex("^\\d{6}$").matches(clean)) return null
+        return when {
+            clean.startsWith("6") -> "s_sh$clean"
+            clean.startsWith("0") || clean.startsWith("3") -> "s_sz$clean"
+            clean.startsWith("4") || clean.startsWith("8") -> "s_bj$clean"
+            else -> null
+        }
+    }
+
+    private data class SearchWrapper(val Datas: List<SearchResult>?)
+}
+
+data class FundGzResult(
+    val fundcode: String?,
+    val name: String?,
+    val dwjz: String?,
+    val gsz: String?,
+    val gztime: String?,
+    val jzrq: String?,
+    val gszzl: String?
+)
+
+data class TencentFundQuote(
+    val dwjz: String?,
+    val zzl: Double?,
+    val jzrq: String?
+)
