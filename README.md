@@ -1,73 +1,73 @@
 # FundMobile
 
-FundMobile is an Android (Kotlin) app port of [real-time-fund](https://github.com/hzm0321/real-time-fund), focused on real-time fund valuation and top holdings tracking on mobile.
+FundMobile 是 [real-time-fund](https://github.com/hzm0321/real-time-fund) 的 Android（Kotlin）移植版本，面向移动端提供基金实时估值与重仓股跟踪能力。
 
-## Features
+## 功能特性
 
-- Real-time fund valuation by fund code
-- Top holdings tracking with intraday stock quote changes
-- Favorites and tab filtering
-- Fund grouping and group-level summary
-- Holding position and trade record management
-- Pull-to-refresh and configurable auto-refresh interval
-- Local persistence for all user data
+- 按基金代码实时获取估值数据
+- 跟踪重仓股及盘中涨跌变化
+- 支持自选与 Tab 筛选
+- 支持分组管理与分组汇总
+- 支持持仓与交易记录管理
+- 支持下拉刷新与自动刷新间隔设置
+- 所有用户数据本地持久化
 
-## Tech Stack
+## 技术栈
 
-- Language: Kotlin
-- UI: Android Views + ViewBinding
-- Architecture: MVVM
-- Networking: OkHttp + Gson + Jsoup
-- Concurrency: Kotlin Coroutines
-- Local storage: SharedPreferences
-- Tests: JUnit4, Robolectric, MockWebServer, coroutines-test
+- 语言：Kotlin
+- UI：Android Views + ViewBinding
+- 架构：MVVM
+- 网络：OkHttp + Gson + Jsoup
+- 并发：Kotlin Coroutines
+- 本地存储：SharedPreferences
+- 测试：JUnit4、Robolectric、MockWebServer、coroutines-test
 
-## Requirements
+## 环境要求
 
-- Android Studio (latest stable recommended)
-- JDK 11+ (project currently built with JDK 21 locally)
-- Android SDK (kept unchanged):
+- Android Studio（建议使用最新稳定版）
+- JDK 11+
+- Android SDK（保持不变）：
   - `compileSdk = 36`
   - `minSdk = 24`
   - `targetSdk = 36`
 
-## Build and Run
+## 构建与运行
 
 ```bash
 ./gradlew :app:assembleDebug
 ```
 
-APK path after build:
+构建完成后的 APK 路径：
 
 `app/build/outputs/apk/debug/app-debug.apk`
 
-## Run Tests
+## 运行测试
 
 ```bash
 ./gradlew :app:testDebugUnitTest
 ```
 
-Current unit test status: 94 passed, 0 failed.
+当前单元测试状态：94 通过，0 失败。
 
-## Project Structure
+## 项目结构
 
-- `app/src/main/java/com/example/fundmobile/data`: API, models, local persistence, repository
-- `app/src/main/java/com/example/fundmobile/domain`: business logic (calculators, trading-day checks)
-- `app/src/main/java/com/example/fundmobile/ui`: Activity, ViewModel, fragments, adapters, bottom sheets
-- `app/src/test/java/com/example/fundmobile`: unit test suites
+- `app/src/main/java/com/example/fundmobile/data`：API、数据模型、本地存储、仓库层
+- `app/src/main/java/com/example/fundmobile/domain`：业务逻辑（收益计算、交易日判断等）
+- `app/src/main/java/com/example/fundmobile/ui`：Activity、ViewModel、Fragment、Adapter、BottomSheet
+- `app/src/test/java/com/example/fundmobile`：单元测试
 
-## Data Sources and Disclaimer
+## 数据来源与免责声明
 
-This project reads data from publicly available endpoints used by the original project. Data may be delayed or incomplete. For learning and reference only; not investment advice.
+本项目使用原项目所依赖的公开接口。数据可能存在延迟或不完整，仅供学习与参考，不构成任何投资建议。
 
-## License
+## 开源协议
 
-This project is licensed under **GNU Affero General Public License v3.0 (AGPL-3.0)**, same as the original project.
+本项目采用与原项目一致的 **GNU Affero General Public License v3.0（AGPL-3.0）**。
 
-- Full text: [`LICENSE`](./LICENSE)
-- Official page: <https://www.gnu.org/licenses/agpl-3.0.html>
+- 协议全文：[`LICENSE`](./LICENSE)
+- 官方说明：<https://www.gnu.org/licenses/agpl-3.0.html>
 
-## Attribution
+## 致谢
 
-- Original project: <https://github.com/hzm0321/real-time-fund>
-- This repository is an Android app adaptation implemented in Kotlin.
+- 原项目：<https://github.com/hzm0321/real-time-fund>
+- 本仓库为其 Kotlin Android 版本适配实现。
