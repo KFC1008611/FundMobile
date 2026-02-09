@@ -2,6 +2,8 @@
 
 FundMobile 是 [real-time-fund](https://github.com/hzm0321/real-time-fund) 的 Android（Kotlin）移植版本，面向移动端提供基金实时估值与重仓股跟踪能力。
 
+<img src="./images/image-20260209162725552.png" alt="image-20260209162725552" style="zoom: 20%;border-radius: 300px;" />
+
 ## 功能特性
 
 - 按基金代码实时获取估值数据
@@ -55,6 +57,10 @@ FundMobile 是 [real-time-fund](https://github.com/hzm0321/real-time-fund) 的 A
 - `app/src/main/java/com/example/fundmobile/domain`：业务逻辑（收益计算、交易日判断等）
 - `app/src/main/java/com/example/fundmobile/ui`：Activity、ViewModel、Fragment、Adapter、BottomSheet
 - `app/src/test/java/com/example/fundmobile`：单元测试
+
+## 截图
+
+<div style="display:flex; justify-content:center; gap:16px; align-items:center;"><img src="./images/image-20260209163453101.png" alt="image-20260209163453101" style="zoom:25%;" /><img src="./images/image-20260209163520952.png" alt="image-20260209163520952" style="zoom:25%;" /></div>
 
 ## 数据来源与免责声明
 
