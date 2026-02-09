@@ -17,7 +17,6 @@ import com.example.fundmobile.databinding.ItemFundListRowBinding
 import com.example.fundmobile.domain.PortfolioCalculator
 
 class FundAdapter(
-    private val onDelete: (FundData) -> Unit,
     private val onFavorite: (String) -> Unit,
     private val onToggleCollapse: (String) -> Unit,
     private val onHoldingAction: (FundData) -> Unit
@@ -40,7 +39,7 @@ class FundAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return if (viewType == TYPE_LIST) {
             val binding = ItemFundListRowBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            ListVH(binding)
+            ListVH(binding, onHoldingAction)
         } else {
             val binding = ItemFundCardBinding.inflate(LayoutInflater.from(parent.context), parent, false)
             CardVH(binding, onFavorite, onToggleCollapse, onHoldingAction)
@@ -83,7 +82,7 @@ class FundAdapter(
         return currentList.getOrNull(position)
     }
 
-    inner class ListVH(private val binding: ItemFundListRowBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class ListVH(private val binding: ItemFundListRowBinding, private val onHoldingAction: (FundData) -> Unit) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: FundData, holding: HoldingPosition?, tradingDay: Boolean, today: String) {
             binding.tvFundName.text = item.name
             binding.tvFundCode.text = item.code
@@ -103,6 +102,8 @@ class FundAdapter(
                 )
             )
 
+            binding.root.setOnClickListener(null)
+            
             binding.root.setOnLongClickListener {
                 onHoldingAction(item)
                 true
@@ -170,6 +171,8 @@ class FundAdapter(
                 )
             }
 
+            binding.root.setOnClickListener(null)
+            
             binding.root.setOnLongClickListener {
                 onHoldingAction(item)
                 true

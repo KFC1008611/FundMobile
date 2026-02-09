@@ -25,7 +25,7 @@ FundMobile 是 [real-time-fund](https://github.com/hzm0321/real-time-fund) 的 A
 ## 环境要求
 
 - Android Studio（建议使用最新稳定版）
-- JDK 11+
+- JDK 17+
 - Android SDK（保持不变）：
   - `compileSdk = 36`
   - `minSdk = 24`

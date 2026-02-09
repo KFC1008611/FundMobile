@@ -11,7 +11,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.DividerItemDecoration
-import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.fundmobile.R
@@ -51,7 +50,6 @@ class FundListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         adapter = FundAdapter(
-            onDelete = { viewModel.removeFund(it.code) },
             onFavorite = { viewModel.toggleFavorite(it) },
             onToggleCollapse = { viewModel.toggleCollapse(it) },
             onHoldingAction = { fund ->
@@ -68,26 +66,7 @@ class FundListFragment : Fragment() {
         binding.swipeRefresh.setColorSchemeResources(R.color.primary)
         binding.swipeRefresh.setOnRefreshListener { viewModel.refreshAll() }
 
-        attachSwipeDelete()
         observeUi()
-    }
-
-    private fun attachSwipeDelete() {
-        val callback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
-            override fun onMove(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-            ): Boolean = false
-
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                val item = adapter.getFundAt(viewHolder.bindingAdapterPosition)
-                if (item != null) {
-                    viewModel.removeFund(item.code)
-                }
-            }
-        }
-        ItemTouchHelper(callback).attachToRecyclerView(binding.recyclerView)
     }
 
     private fun observeUi() {

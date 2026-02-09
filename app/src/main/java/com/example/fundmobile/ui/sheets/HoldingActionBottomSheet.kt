@@ -50,9 +50,20 @@ class HoldingActionBottomSheet : BottomSheetDialogFragment() {
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.confirm) { _, _ ->
                     viewModel.saveHolding(fundCode, null)
+                    dismiss()
                 }
                 .show()
-            dismiss()
+        }
+        binding.btnDeleteFund.setOnClickListener {
+            AlertDialog.Builder(requireContext())
+                .setTitle(getString(R.string.delete))
+                .setMessage(getString(R.string.confirm_delete_fund, fundName))
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.confirm) { _, _ ->
+                    viewModel.removeFund(fundCode)
+                    dismiss()
+                }
+                .show()
         }
     }
 

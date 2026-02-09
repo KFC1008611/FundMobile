@@ -55,6 +55,7 @@
     <string name="add_to_group">添加基金到分组</string>
     <string name="remove_from_group">从分组移除</string>
     <string name="confirm_delete_fund">确定要删除基金 %1$s 吗？</string>
+    <string name="confirm_delete_fund_long_press">长按删除基金</string>
     <string name="confirm_delete_group">确定要删除分组 %1$s 吗？\n分组内的基金不会被删除。</string>
     <string name="confirm_clear_holding">确定要清空 %1$s 的持仓数据吗？</string>
 </resources>
