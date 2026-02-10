@@ -18,7 +18,9 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -38,6 +40,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val pendingTrades = MutableStateFlow<List<PendingTrade>>(emptyList())
     val collapsedCodes = MutableStateFlow<Set<String>>(emptySet())
     val refreshing = MutableStateFlow(false)
+    private val _autoRefreshError = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val autoRefreshError: SharedFlow<String> = _autoRefreshError
     val refreshMs = MutableStateFlow(30000L)
     val darkMode = MutableStateFlow(true)
     val currentTab = MutableStateFlow("all")
@@ -302,7 +306,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         autoRefreshJob = viewModelScope.launch {
             while (isActive) {
                 delay(refreshMs.value)
-                if (funds.value.isNotEmpty()) refreshAll()
+                if (funds.value.isNotEmpty()) silentRefresh()
+            }
+        }
+    }
+
+    private fun silentRefresh() {
+        viewModelScope.launch {
+            try {
+                val codes = funds.value.map { it.code }
+                if (codes.isEmpty()) return@launch
+                val refreshed = repo.fetchAndRefreshFunds(codes)
+                funds.value = refreshed
+                repo.saveFunds(refreshed)
+            } catch (e: Exception) {
+                _autoRefreshError.tryEmit("自动刷新失败: ${e.message ?: "未知错误"}")
             }
         }
     }

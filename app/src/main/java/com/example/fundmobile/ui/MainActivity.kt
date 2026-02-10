@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.PopupMenu
+import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -108,6 +109,12 @@ class MainActivity : AppCompatActivity() {
                         binding.btnViewMode.setImageResource(
                             if (mode == "card") R.drawable.ic_card_view else R.drawable.ic_list_view
                         )
+                    }
+                }
+
+                launch {
+                    viewModel.autoRefreshError.collect { message ->
+                        Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
                     }
                 }
             }
