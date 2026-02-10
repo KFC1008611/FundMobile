@@ -8,6 +8,7 @@ import com.example.fundmobile.data.remote.HttpClient
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -466,6 +467,20 @@ class MainViewModelTest {
     }
 
     @Test
+    fun displayFunds_sortByName_usesChineseLocaleOrdering() {
+        val fundA = sampleFund("161725").copy(name = "中欧成长")
+        val fundB = sampleFund("110022").copy(name = "阿尔法精选")
+        val fundC = sampleFund("003456").copy(name = "百度指数")
+        viewModel.funds.value = listOf(fundA, fundB, fundC)
+        viewModel.setCurrentTab("all")
+
+        viewModel.setSort("name", "asc")
+
+        val orderedNames = viewModel.displayFunds.value.map { it.name }
+        assertEquals(listOf("阿尔法精选", "百度指数", "中欧成长"), orderedNames)
+    }
+
+    @Test
     fun setCurrentTab_holdingTab_works() {
         viewModel.setCurrentTab("holding")
         assertEquals("holding", viewModel.currentTab.value)
@@ -714,6 +729,51 @@ class MainViewModelTest {
             assertNotNull(fundsByCode["110022"])
             assertEquals("刷新后161725", fundsByCode["161725"]!!.name)
             assertEquals("基金110022", fundsByCode["110022"]!!.name)
+        } finally {
+            HttpClient.client = previous
+        }
+    }
+
+    @Test
+    fun refreshAll_concurrentCalls_doNotOverlapRefreshExecution() {
+        val fund = sampleFund("161725")
+        viewModel.funds.value = listOf(fund)
+        val fundGzHitCount = AtomicInteger(0)
+        val validGz = """jsonpgz({"fundcode":"161725","name":"基金161725","dwjz":"1.5000","gsz":"1.5200","gztime":"2024-01-15 15:00","jzrq":"2024-01-14","gszzl":"1.33"});"""
+
+        val previous = HttpClient.client
+        HttpClient.client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val url = chain.request().url.toString()
+                val body = when {
+                    url.contains("fundgz.1234567.com.cn/js/161725.js") -> {
+                        fundGzHitCount.incrementAndGet()
+                        Thread.sleep(200)
+                        validGz
+                    }
+                    url.contains("qt.gtimg.cn/q=jj161725") -> {
+                        "v_jj161725=\"1~基金161725~161725~x~x~1.5000~x~0.10~2024-01-14 15:00:00~\";"
+                    }
+                    url.contains("FundArchivesDatas.aspx?type=jjcc&code=161725") -> {
+                        "var apidata={content:\"<table><tbody></tbody></table>\"};"
+                    }
+                    else -> ""
+                }
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(body.toResponseBody())
+                    .build()
+            }
+            .build()
+
+        try {
+            viewModel.refreshAll()
+            viewModel.refreshAll()
+            Thread.sleep(700)
+            assertEquals(1, fundGzHitCount.get())
         } finally {
             HttpClient.client = previous
         }

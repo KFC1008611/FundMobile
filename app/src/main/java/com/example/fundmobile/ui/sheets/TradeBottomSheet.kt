@@ -177,8 +177,7 @@ class TradeBottomSheet : BottomSheetDialogFragment() {
                 binding.tvRefNav.text = "参考净值(${value.first}) ${"%.4f".format(value.second)}"
             } else {
                 referencePrice = null
-                val fund = viewModel.funds.value.firstOrNull { it.code == fundCode }
-                binding.tvRefNav.text = "参考净值 ${fund?.gsz ?: fund?.dwjz ?: "--"}"
+                binding.tvRefNav.text = "参考净值 暂无（将加入待处理）"
             }
             updateConfirmSummary(tradeType == "buy")
         }

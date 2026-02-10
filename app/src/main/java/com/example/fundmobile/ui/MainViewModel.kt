@@ -17,6 +17,8 @@ import com.example.fundmobile.domain.TradingDayChecker
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.ZoneId
+import java.text.Collator
+import java.util.Locale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -28,12 +30,16 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repo = FundRepository(PrefsStore(application))
     private val chinaZone = ZoneId.of("Asia/Shanghai")
     private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ISO_DATE
+    private val chineseNameCollator: Collator = Collator.getInstance(Locale.CHINA)
+    private val refreshMutex = Mutex()
 
     val funds = MutableStateFlow<List<FundData>>(emptyList())
     val favorites = MutableStateFlow<Set<String>>(emptySet())
@@ -85,9 +91,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val displayFunds: StateFlow<List<FundData>> = combine(
         filterInputs, sortBy, sortOrder, holdings, isTradingDay
     ) { filtered, by, order, holdingMap, tradingDay ->
-        val todayStr = LocalDate.now(chinaZone).toString()
+            val todayStr = LocalDate.now(chinaZone).toString()
             val comparator = when (by) {
-                "name" -> compareBy<FundData> { it.name }
+                "name" -> Comparator<FundData> { a, b -> chineseNameCollator.compare(a.name, b.name) }
                 "yield" -> compareBy<FundData> {
                     if ((it.estPricedCoverage > 0.05) && it.estGszzl != null) {
                         it.estGszzl
@@ -142,10 +148,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshAll() {
         viewModelScope.launch {
+            if (!refreshMutex.tryLock()) return@launch
+            val codes = funds.value.map { it.code }
+            if (codes.isEmpty()) {
+                refreshMutex.unlock()
+                return@launch
+            }
             refreshing.value = true
             try {
-                val codes = funds.value.map { it.code }
-                if (codes.isEmpty()) return@launch
                 val refreshed = repo.fetchAndRefreshFunds(codes)
                 val merged = mergeRefreshResult(funds.value, codes, refreshed)
                 funds.value = merged
@@ -153,6 +163,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } finally {
                 processPendingQueue()
                 refreshing.value = false
+                refreshMutex.unlock()
             }
         }
     }
@@ -170,21 +181,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val mergedCodes = (funds.value.map { it.code } + codes).distinct()
             if (mergedCodes.isEmpty()) return@launch
-            refreshing.value = true
-            try {
-                val refreshed = repo.fetchAndRefreshFunds(mergedCodes)
-                val merged = mergeRefreshResult(funds.value, mergedCodes, refreshed)
-                funds.value = merged
-                repo.saveFunds(merged)
+            refreshMutex.withLock {
+                refreshing.value = true
+                try {
+                    val refreshed = repo.fetchAndRefreshFunds(mergedCodes)
+                    val merged = mergeRefreshResult(funds.value, mergedCodes, refreshed)
+                    funds.value = merged
+                    repo.saveFunds(merged)
 
-                val successCodes = codes.filter { code ->
-                    merged.any { it.code == code && hasUsableFundData(it) }
+                    val successCodes = codes.filter { code ->
+                        merged.any { it.code == code && hasUsableFundData(it) }
+                    }
+                    val updatedFav = favorites.value + successCodes
+                    favorites.value = updatedFav
+                    repo.saveFavorites(updatedFav)
+                } finally {
+                    refreshing.value = false
                 }
-                val updatedFav = favorites.value + successCodes
-                favorites.value = updatedFav
-                repo.saveFavorites(updatedFav)
-            } finally {
-                refreshing.value = false
             }
         }
     }
@@ -369,6 +382,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun silentRefresh() {
         viewModelScope.launch {
+            if (!refreshMutex.tryLock()) return@launch
             try {
                 val codes = funds.value.map { it.code }
                 if (codes.isEmpty()) return@launch
@@ -380,6 +394,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _autoRefreshError.tryEmit("自动刷新失败: ${e.message ?: "未知错误"}")
             } finally {
                 processPendingQueue()
+                refreshMutex.unlock()
             }
         }
     }
