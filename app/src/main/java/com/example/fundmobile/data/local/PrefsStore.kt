@@ -23,6 +23,7 @@ class PrefsStore(context: Context) {
         const val KEY_VIEW_MODE = "viewMode"
         const val KEY_SORT_BY = "sortBy"
         const val KEY_SORT_ORDER = "sortOrder"
+        const val KEY_DARK_MODE = "darkMode"
     }
 
     fun saveFunds(funds: List<FundData>) {
@@ -113,5 +114,13 @@ class PrefsStore(context: Context) {
 
     fun loadSortOrder(): String {
         return prefs.getString(KEY_SORT_ORDER, "desc") ?: "desc"
+    }
+
+    fun saveDarkMode(isDark: Boolean) {
+        prefs.edit().putBoolean(KEY_DARK_MODE, isDark).apply()
+    }
+
+    fun loadDarkMode(): Boolean {
+        return prefs.getBoolean(KEY_DARK_MODE, true)
     }
 }

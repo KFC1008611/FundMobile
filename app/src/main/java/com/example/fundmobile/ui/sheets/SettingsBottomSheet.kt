@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.activityViewModels
 import com.example.fundmobile.R
 import com.example.fundmobile.databinding.SheetSettingsBinding
@@ -25,8 +26,21 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.etRefreshSeconds.setText((viewModel.refreshMs.value / 1000L).toString())
 
+        val isDark = viewModel.darkMode.value
+        binding.switchDarkMode.isChecked = isDark
+        binding.tvThemeDesc.setText(if (isDark) R.string.theme_dark else R.string.theme_light)
+
+        binding.switchDarkMode.setOnCheckedChangeListener { _, checked ->
+            binding.tvThemeDesc.setText(if (checked) R.string.theme_dark else R.string.theme_light)
+            viewModel.setDarkMode(checked)
+            AppCompatDelegate.setDefaultNightMode(
+                if (checked) AppCompatDelegate.MODE_NIGHT_YES
+                else AppCompatDelegate.MODE_NIGHT_NO
+            )
+        }
+
+        binding.etRefreshSeconds.setText((viewModel.refreshMs.value / 1000L).toString())
         binding.btnMinus.setOnClickListener { adjust(-5) }
         binding.btnPlus.setOnClickListener { adjust(5) }
         binding.btnSave.setOnClickListener {

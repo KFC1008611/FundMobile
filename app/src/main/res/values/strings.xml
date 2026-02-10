@@ -6,7 +6,10 @@
     <string name="search_hint">搜索基金名称或代码…</string>
     <string name="refresh">刷新</string>
     <string name="settings">设置</string>
-    <string name="refresh_interval">刷新频率</string>
+    <string name="refresh_interval">自动刷新间隔</string>
+    <string name="theme_mode">深色模式</string>
+    <string name="theme_dark">当前为深色主题</string>
+    <string name="theme_light">当前为浅色主题</string>
     <string name="seconds">秒</string>
     <string name="save">保存</string>
     <string name="cancel">取消</string>

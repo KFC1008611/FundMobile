@@ -173,6 +173,19 @@ class PrefsStoreTest {
         assertEquals(setOf("000001"), store.loadFavorites())
     }
 
+    @Test
+    fun saveDarkMode_loadDarkMode_roundTrip() {
+        store.saveDarkMode(false)
+        assertEquals(false, store.loadDarkMode())
+        store.saveDarkMode(true)
+        assertEquals(true, store.loadDarkMode())
+    }
+
+    @Test
+    fun loadDarkMode_default_isTrue() {
+        assertEquals(true, store.loadDarkMode())
+    }
+
     private fun sampleFund(
         code: String,
         holdings: List<StockHolding> = emptyList()

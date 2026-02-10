@@ -39,6 +39,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val collapsedCodes = MutableStateFlow<Set<String>>(emptySet())
     val refreshing = MutableStateFlow(false)
     val refreshMs = MutableStateFlow(30000L)
+    val darkMode = MutableStateFlow(true)
     val currentTab = MutableStateFlow("all")
     val sortBy = MutableStateFlow("default")
     val sortOrder = MutableStateFlow("desc")
@@ -111,6 +112,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         groups.value = repo.loadGroups()
         collapsedCodes.value = repo.loadCollapsedCodes()
         refreshMs.value = repo.loadRefreshMs()
+        darkMode.value = repo.loadDarkMode()
         holdings.value = repo.loadHoldings()
         pendingTrades.value = repo.loadPendingTrades()
         viewMode.value = repo.loadViewMode()
@@ -212,6 +214,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshMs.value = ms
         repo.saveRefreshMs(ms)
         startAutoRefresh()
+    }
+
+    fun setDarkMode(isDark: Boolean) {
+        darkMode.value = isDark
+        repo.saveDarkMode(isDark)
     }
 
     fun setSort(by: String, order: String) {

@@ -71,4 +71,7 @@ class FundRepository(private val prefsStore: PrefsStore) {
 
     fun saveSortOrder(order: String) = prefsStore.saveSortOrder(order)
     fun loadSortOrder(): String = prefsStore.loadSortOrder()
+
+    fun saveDarkMode(isDark: Boolean) = prefsStore.saveDarkMode(isDark)
+    fun loadDarkMode(): Boolean = prefsStore.loadDarkMode()
 }

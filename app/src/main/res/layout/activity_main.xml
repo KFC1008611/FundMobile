@@ -40,20 +40,6 @@
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/tvRefreshBadge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_badge"
-                android:paddingStart="10dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="10dp"
-                android:paddingBottom="4dp"
-                android:text="30秒"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
-
             <ImageButton
                 android:id="@+id/btnSort"
                 android:layout_width="36dp"

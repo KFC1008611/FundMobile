@@ -6,6 +6,7 @@ import android.view.MenuItem
 import android.widget.PopupMenu
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -30,6 +31,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 应用保存的主题设置
+        AppCompatDelegate.setDefaultNightMode(
+            if (viewModel.darkMode.value) AppCompatDelegate.MODE_NIGHT_YES
+            else AppCompatDelegate.MODE_NIGHT_NO
+        )
         
         // 启用 edge-to-edge 显示模式
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -93,12 +100,6 @@ class MainActivity : AppCompatActivity() {
                 launch {
                     viewModel.refreshing.collect { refreshing ->
                         binding.refreshLine.isVisible = refreshing
-                    }
-                }
-
-                launch {
-                    viewModel.refreshMs.collect { ms ->
-                        binding.tvRefreshBadge.text = "${ms / 1000}秒"
                     }
                 }
 
