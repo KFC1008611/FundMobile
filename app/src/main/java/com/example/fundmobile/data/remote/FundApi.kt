@@ -4,6 +4,7 @@ import com.example.fundmobile.data.model.FundData
 import com.example.fundmobile.data.model.SearchResult
 import com.example.fundmobile.data.model.StockHolding
 import com.google.gson.Gson
+import kotlin.math.abs
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
@@ -32,10 +33,11 @@ object FundApi {
             val raw = HttpClient.getStringAutoCharset("https://qt.gtimg.cn/q=jj$code")
             val value = JsonpParser.extractQuotedValue(raw, "v_jj$code") ?: return@runCatching null
             val parts = value.split("~")
+            val name = parts.getOrNull(1)?.takeIf { it.isNotBlank() }
             val dwjz = parts.getOrNull(5)?.takeIf { it.isNotBlank() }
             val zzl = parts.getOrNull(7)?.toDoubleOrNull()
             val jzrq = parts.getOrNull(8)?.take(10)?.takeIf { it.isNotBlank() }
-            TencentFundQuote(dwjz = dwjz, zzl = zzl, jzrq = jzrq)
+            TencentFundQuote(name = name, dwjz = dwjz, zzl = zzl, jzrq = jzrq)
         }.getOrNull()
     }
 
@@ -158,6 +160,11 @@ object FundApi {
                 }
             }
 
+            val estimate = calculateEstimatedValuation(
+                baseNav = gzData?.dwjz?.toDoubleOrNull(),
+                holdings = holdings
+            )
+
             FundData(
                 code = gzData?.fundcode ?: code,
                 name = gzData?.name ?: code,
@@ -167,6 +174,9 @@ object FundApi {
                 jzrq = jzrq,
                 gszzl = gzData?.gszzl?.toDoubleOrNull(),
                 zzl = zzl,
+                estGsz = estimate?.first,
+                estGszzl = estimate?.second,
+                estPricedCoverage = estimate?.third ?: 0.0,
                 noValuation = false,
                 holdings = holdings
             )
@@ -175,19 +185,71 @@ object FundApi {
 
     suspend fun fetchFundDataFallback(code: String): FundData {
         val quote = fetchTencentFundQuote(code)
-        val name = searchFunds(code).firstOrNull { it.CODE == code }?.NAME ?: code
+        val dwjz = quote?.dwjz?.takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("未能获取到基金数据")
+        val name = searchFunds(code).firstOrNull { it.CODE == code }?.NAME
+            ?: quote.name
+            ?: "未知基金($code)"
         return FundData(
             code = code,
             name = name,
-            dwjz = quote?.dwjz,
+            dwjz = dwjz,
             gsz = null,
             gztime = null,
             jzrq = quote?.jzrq,
             gszzl = null,
             zzl = quote?.zzl,
+            estGsz = null,
+            estGszzl = null,
+            estPricedCoverage = 0.0,
             noValuation = true,
             holdings = emptyList()
         )
+    }
+
+    private fun calculateEstimatedValuation(
+        baseNav: Double?,
+        holdings: List<StockHolding>
+    ): Triple<Double, Double, Double>? {
+        val nav = baseNav ?: return null
+        if (nav <= 0.0 || holdings.isEmpty()) return null
+
+        var weightedChangeSum = 0.0
+        var weightedCoverage = 0.0
+        var totalWeight = 0.0
+        var knownWeight = 0.0
+
+        holdings.forEach { holding ->
+            val weight = parseWeightPercent(holding.weight) ?: return@forEach
+            if (weight <= 0.0) return@forEach
+            totalWeight += weight
+
+            val change = holding.change
+            if (change != null && change.isFinite()) {
+                weightedChangeSum += weight * change
+                knownWeight += weight
+            }
+            weightedCoverage += weight
+        }
+
+        if (knownWeight <= 0.0 || weightedCoverage <= 0.0) return null
+
+        val estimatedRate = weightedChangeSum / knownWeight
+        val estimatedNav = nav * (1.0 + estimatedRate / 100.0)
+        val coverage = if (totalWeight > 0.0) {
+            (knownWeight / totalWeight).coerceIn(0.0, 1.0)
+        } else {
+            0.0
+        }
+
+        if (!estimatedNav.isFinite() || abs(estimatedNav) <= 1e-12) return null
+        return Triple(estimatedNav, estimatedRate, coverage)
+    }
+
+    private fun parseWeightPercent(weightText: String): Double? {
+        if (weightText.isBlank()) return null
+        val match = Regex("([\\d.]+)").find(weightText) ?: return null
+        return match.groupValues.getOrNull(1)?.toDoubleOrNull()
     }
 
     private fun parseHoldingsHtml(html: String): List<StockHolding> {
@@ -269,9 +331,10 @@ object FundApi {
 
     private fun toTencentStockSymbol(code: String): String? {
         val clean = code.trim()
+        if (Regex("^\\d{5}$").matches(clean)) return "s_hk$clean"
         if (!Regex("^\\d{6}$").matches(clean)) return null
         return when {
-            clean.startsWith("6") -> "s_sh$clean"
+            clean.startsWith("6") || clean.startsWith("9") -> "s_sh$clean"
             clean.startsWith("0") || clean.startsWith("3") -> "s_sz$clean"
             clean.startsWith("4") || clean.startsWith("8") -> "s_bj$clean"
             else -> null
@@ -292,6 +355,7 @@ data class FundGzResult(
 )
 
 data class TencentFundQuote(
+    val name: String?,
     val dwjz: String?,
     val zzl: Double?,
     val jzrq: String?

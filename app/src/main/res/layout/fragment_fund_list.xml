@@ -131,7 +131,7 @@
             android:layout_width="42dp"
             android:layout_height="42dp"
             android:src="@drawable/ic_search"
-            android:tint="@color/text_secondary" />
+            app:tint="@color/text_secondary" />
 
         <TextView
             android:layout_width="wrap_content"

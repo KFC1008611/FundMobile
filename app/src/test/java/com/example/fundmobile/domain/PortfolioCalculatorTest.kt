@@ -21,7 +21,10 @@ class PortfolioCalculatorTest {
         gztime: String? = null,
         jzrq: String? = "2024-01-15",
         gszzl: Double? = null,
-        zzl: Double? = null
+        zzl: Double? = null,
+        estGsz: Double? = null,
+        estGszzl: Double? = null,
+        estPricedCoverage: Double = 0.0
     ): FundData {
         return FundData(
             code = code,
@@ -32,6 +35,9 @@ class PortfolioCalculatorTest {
             jzrq = jzrq,
             gszzl = gszzl,
             zzl = zzl,
+            estGsz = estGsz,
+            estGszzl = estGszzl,
+            estPricedCoverage = estPricedCoverage,
             noValuation = false,
             holdings = emptyList()
         )
@@ -89,6 +95,32 @@ class PortfolioCalculatorTest {
         assertEquals((expectedNav - 1.2) * 1000.0, result.profitTotal!!, 1e-6)
         val expectedToday = result.amount - (result.amount / (1 + 3.57 / 100))
         assertEquals(expectedToday, result.profitToday!!, 1e-6)
+    }
+
+    @Test
+    fun getHoldingProfit_withEstimatedHoldingPrice_prefersEstimatedFields() {
+        val today = "2024-01-15"
+        val result = PortfolioCalculator.getHoldingProfit(
+            fund = fund(
+                dwjz = "1.40",
+                gsz = "1.45",
+                jzrq = "2024-01-14",
+                gztime = "$today 14:30",
+                gszzl = 3.57,
+                estGsz = 1.60,
+                estGszzl = 14.28,
+                estPricedCoverage = 0.20
+            ),
+            holding = HoldingPosition(share = 1000.0, cost = 1.2),
+            isTradingDay = true,
+            todayStr = today
+        )
+
+        assertNotNull(result)
+        val isAfter9amChina = java.time.ZonedDateTime.now(ZoneId.of("Asia/Shanghai")).hour >= 9
+        val expectedNav = if (isAfter9amChina) 1.60 else 1.40
+        assertEquals(expectedNav * 1000.0, result!!.amount, 1e-6)
+        assertEquals((expectedNav - 1.2) * 1000.0, result.profitTotal!!, 1e-6)
     }
 
     @Test

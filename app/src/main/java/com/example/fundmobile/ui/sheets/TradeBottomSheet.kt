@@ -14,7 +14,10 @@ import com.example.fundmobile.ui.MainViewModel
 import com.example.fundmobile.ui.TradeData
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class TradeBottomSheet : BottomSheetDialogFragment() {
@@ -27,7 +30,10 @@ class TradeBottomSheet : BottomSheetDialogFragment() {
     private val fundName by lazy { requireArguments().getString(ARG_NAME).orEmpty() }
     private val tradeType by lazy { requireArguments().getString(ARG_TYPE).orEmpty() }
 
-    private var selectedDate: LocalDate = LocalDate.now()
+    private val chinaZone: ZoneId = ZoneId.of("Asia/Shanghai")
+    private var selectedDate: LocalDate = LocalDate.now(chinaZone)
+    private var referenceJob: Job? = null
+    private var referencePrice: Double? = null
 
     override fun getTheme(): Int = R.style.ThemeOverlay_FundMobile_BottomSheetDialog
 
@@ -43,17 +49,22 @@ class TradeBottomSheet : BottomSheetDialogFragment() {
         val isBuy = tradeType == "buy"
         binding.layoutBuy.isVisible = isBuy
         binding.layoutSell.isVisible = !isBuy
+        val defaultAfter3pm = LocalTime.now(chinaZone) >= LocalTime.of(15, 0)
+        binding.rbBuyAfter.isChecked = defaultAfter3pm
+        binding.rbSellAfter.isChecked = defaultAfter3pm
 
         binding.btnBuyDate.text = selectedDate.format(DateTimeFormatter.ISO_DATE)
         binding.btnSellDate.text = selectedDate.format(DateTimeFormatter.ISO_DATE)
         binding.btnBuyDate.setOnClickListener { pickDate(true) }
         binding.btnSellDate.setOnClickListener { pickDate(false) }
+        binding.groupBuyPeriod.setOnCheckedChangeListener { _, _ -> loadReferenceNav() }
+        binding.groupSellPeriod.setOnCheckedChangeListener { _, _ -> loadReferenceNav() }
 
-        val holding = viewModel.holdings.value[fundCode]
-        binding.btnQuarter.setOnClickListener { setSellFraction(holding?.share ?: 0.0, 0.25) }
-        binding.btnThird.setOnClickListener { setSellFraction(holding?.share ?: 0.0, 1.0 / 3.0) }
-        binding.btnHalf.setOnClickListener { setSellFraction(holding?.share ?: 0.0, 0.5) }
-        binding.btnAll.setOnClickListener { setSellFraction(holding?.share ?: 0.0, 1.0) }
+        binding.btnQuarter.setOnClickListener { setSellFraction(getAvailableSellShare(), 0.25) }
+        binding.btnThird.setOnClickListener { setSellFraction(getAvailableSellShare(), 1.0 / 3.0) }
+        binding.btnHalf.setOnClickListener { setSellFraction(getAvailableSellShare(), 0.5) }
+        binding.btnAll.setOnClickListener { setSellFraction(getAvailableSellShare(), 1.0) }
+        updateSellShareHint()
 
         binding.groupSellFeeMode.setOnCheckedChangeListener { _, checkedId ->
             binding.etSellFee.hint = if (checkedId == binding.rbFeeRate.id) getString(R.string.sell_fee) else "卖出手续费金额"
@@ -69,23 +80,28 @@ class TradeBottomSheet : BottomSheetDialogFragment() {
 
     private fun pickDate(isBuy: Boolean) {
         val now = selectedDate
-        DatePickerDialog(
+        val today = LocalDate.now(chinaZone)
+        val dialog = DatePickerDialog(
             requireContext(),
             { _, year, month, day ->
                 selectedDate = LocalDate.of(year, month + 1, day)
                 val text = selectedDate.format(DateTimeFormatter.ISO_DATE)
                 if (isBuy) binding.btnBuyDate.text = text else binding.btnSellDate.text = text
                 updateConfirmSummary(isBuy)
+                loadReferenceNav()
             },
             now.year,
             now.monthValue - 1,
             now.dayOfMonth
-        ).show()
+        )
+        dialog.datePicker.maxDate = today.atStartOfDay(chinaZone).toInstant().toEpochMilli()
+        dialog.show()
     }
 
     private fun setSellFraction(totalShare: Double, fraction: Double) {
         if (totalShare <= 0) return
         binding.etSellShare.setText("%.2f".format(totalShare * fraction))
+        binding.etSellShare.error = null
         updateConfirmSummary(false)
     }
 
@@ -94,23 +110,33 @@ class TradeBottomSheet : BottomSheetDialogFragment() {
         val date = selectedDate.format(DateTimeFormatter.ISO_DATE)
         val data = if (isBuy) {
             val amount = binding.etBuyAmount.text?.toString()?.toDoubleOrNull() ?: return
+            if (amount <= 0) return
             val fee = binding.etBuyFeeRate.text?.toString()?.toDoubleOrNull() ?: 0.0
             val after3pm = binding.rbBuyAfter.isChecked
             TradeData(
                 type = "buy",
                 amount = amount,
+                price = referencePrice,
                 feeRate = fee,
                 date = date,
                 isAfter3pm = after3pm
             )
         } else {
             val share = binding.etSellShare.text?.toString()?.toDoubleOrNull() ?: return
+            if (share <= 0) return
+            val availableShare = getAvailableSellShare()
+            if (share > availableShare + 1e-8) {
+                binding.etSellShare.error = "卖出份额不能超过可用份额(${String.format("%.2f", availableShare)})"
+                return
+            }
+            binding.etSellShare.error = null
             val feeText = binding.etSellFee.text?.toString().orEmpty()
             val feeMode = if (binding.rbFeeRate.isChecked) "rate" else "amount"
             val after3pm = binding.rbSellAfter.isChecked
             TradeData(
                 type = "sell",
                 share = share,
+                price = referencePrice,
                 feeRate = if (feeMode == "rate") feeText.toDoubleOrNull() else null,
                 feeMode = feeMode,
                 feeValue = feeText,
@@ -122,17 +148,44 @@ class TradeBottomSheet : BottomSheetDialogFragment() {
         dismissAllowingStateLoss()
     }
 
+    private fun getAvailableSellShare(): Double {
+        val holdingShare = viewModel.holdings.value[fundCode]?.share ?: 0.0
+        val pendingSellShare = viewModel.pendingTrades.value
+            .asSequence()
+            .filter { it.fundCode == fundCode && it.type == "sell" }
+            .sumOf { it.share ?: 0.0 }
+        return (holdingShare - pendingSellShare).coerceAtLeast(0.0)
+    }
+
+    private fun updateSellShareHint() {
+        if (tradeType != "sell") return
+        val available = getAvailableSellShare()
+        binding.etSellShare.hint = if (available > 0) {
+            "最多可卖 ${"%.2f".format(available)} 份"
+        } else {
+            getString(R.string.sell_shares)
+        }
+    }
+
     private fun loadReferenceNav() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            val value = viewModel.fetchSmartNetValue(fundCode, selectedDate.format(DateTimeFormatter.BASIC_ISO_DATE))
+        referenceJob?.cancel()
+        referenceJob = viewLifecycleOwner.lifecycleScope.launch {
+            val queryDate = if (isAfter3pmSelected()) selectedDate.plusDays(1) else selectedDate
+            val value = viewModel.fetchSmartNetValue(fundCode, queryDate.format(DateTimeFormatter.ISO_DATE))
             if (value != null) {
+                referencePrice = value.second
                 binding.tvRefNav.text = "参考净值(${value.first}) ${"%.4f".format(value.second)}"
             } else {
+                referencePrice = null
                 val fund = viewModel.funds.value.firstOrNull { it.code == fundCode }
                 binding.tvRefNav.text = "参考净值 ${fund?.gsz ?: fund?.dwjz ?: "--"}"
             }
             updateConfirmSummary(tradeType == "buy")
         }
+    }
+
+    private fun isAfter3pmSelected(): Boolean {
+        return if (tradeType == "buy") binding.rbBuyAfter.isChecked else binding.rbSellAfter.isChecked
     }
 
     private fun updateConfirmSummary(isBuy: Boolean) {
@@ -144,6 +197,7 @@ class TradeBottomSheet : BottomSheetDialogFragment() {
     }
 
     override fun onDestroyView() {
+        referenceJob?.cancel()
         _binding = null
         super.onDestroyView()
     }

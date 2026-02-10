@@ -66,7 +66,7 @@
                     android:background="@android:color/transparent"
                     android:padding="6dp"
                     android:src="@drawable/ic_expand"
-                    android:tint="@color/text_secondary" />
+                    app:tint="@color/text_secondary" />
             </LinearLayout>
 
             <LinearLayout

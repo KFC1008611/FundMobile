@@ -15,6 +15,7 @@ import com.example.fundmobile.data.repo.FundRepository
 import com.example.fundmobile.domain.PortfolioCalculator
 import com.example.fundmobile.domain.TradingDayChecker
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.time.ZoneId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,6 +33,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repo = FundRepository(PrefsStore(application))
     private val chinaZone = ZoneId.of("Asia/Shanghai")
+    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ISO_DATE
 
     val funds = MutableStateFlow<List<FundData>>(emptyList())
     val favorites = MutableStateFlow<Set<String>>(emptySet())
@@ -69,7 +71,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val filterInputs = combine(funds, favorites, groups, currentTab, holdings) { allFunds, fav, groupList, tab, holdingMap ->
         val holdingCodes = holdingMap.filter { it.value.share > 0 }.keys
         val filtered = when (tab) {
-            "all" -> allFunds.filter { fav.contains(it.code) || holdingCodes.contains(it.code) }
+            "all" -> allFunds
             "holding" -> allFunds.filter { holdingCodes.contains(it.code) }
             "fav" -> allFunds.filter { fav.contains(it.code) }
             else -> {
@@ -84,12 +86,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         filterInputs, sortBy, sortOrder, holdings, isTradingDay
     ) { filtered, by, order, holdingMap, tradingDay ->
         val todayStr = LocalDate.now(chinaZone).toString()
-        val comparator = when (by) {
-            "name" -> compareBy<FundData> { it.name }
-            "yield" -> compareBy<FundData> { it.gszzl ?: it.zzl ?: 0.0 }
-            "holding" -> compareBy<FundData> {
-                PortfolioCalculator.getHoldingProfit(it, holdingMap[it.code], tradingDay, todayStr)?.profitTotal ?: 0.0
-            }
+            val comparator = when (by) {
+                "name" -> compareBy<FundData> { it.name }
+                "yield" -> compareBy<FundData> {
+                    if ((it.estPricedCoverage > 0.05) && it.estGszzl != null) {
+                        it.estGszzl
+                    } else {
+                        it.gszzl ?: it.zzl ?: 0.0
+                    }
+                }
+                "holding" -> compareBy<FundData> {
+                    PortfolioCalculator.getHoldingProfit(it, holdingMap[it.code], tradingDay, todayStr)?.profitTotal ?: Double.NEGATIVE_INFINITY
+                }
             else -> compareBy { 0 }
         }
 
@@ -109,6 +117,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private var autoRefreshJob: Job? = null
+    private var tradingDayJob: Job? = null
 
     init {
         funds.value = repo.loadFunds()
@@ -123,9 +132,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         sortBy.value = repo.loadSortBy()
         sortOrder.value = repo.loadSortOrder()
 
-        viewModelScope.launch {
-            isTradingDay.value = TradingDayChecker.isTradingDay()
-        }
+        startTradingDayMonitor()
         startAutoRefresh()
     }
 
@@ -140,9 +147,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val codes = funds.value.map { it.code }
                 if (codes.isEmpty()) return@launch
                 val refreshed = repo.fetchAndRefreshFunds(codes)
-                funds.value = refreshed
-                repo.saveFunds(refreshed)
+                val merged = mergeRefreshResult(funds.value, codes, refreshed)
+                funds.value = merged
+                repo.saveFunds(merged)
             } finally {
+                processPendingQueue()
                 refreshing.value = false
             }
         }
@@ -164,10 +173,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             refreshing.value = true
             try {
                 val refreshed = repo.fetchAndRefreshFunds(mergedCodes)
-                funds.value = refreshed
-                repo.saveFunds(refreshed)
+                val merged = mergeRefreshResult(funds.value, mergedCodes, refreshed)
+                funds.value = merged
+                repo.saveFunds(merged)
 
-                val updatedFav = favorites.value + codes
+                val successCodes = codes.filter { code ->
+                    merged.any { it.code == code && hasUsableFundData(it) }
+                }
+                val updatedFav = favorites.value + successCodes
                 favorites.value = updatedFav
                 repo.saveFavorites(updatedFav)
             } finally {
@@ -194,6 +207,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val updatedHoldings = holdings.value.toMutableMap().apply { remove(code) }
         holdings.value = updatedHoldings
         repo.saveHoldings(updatedHoldings)
+
+        val updatedPending = pendingTrades.value.filterNot { it.fundCode == code }
+        pendingTrades.value = updatedPending
+        repo.savePendingTrades(updatedPending)
     }
 
     fun toggleFavorite(code: String) {
@@ -238,43 +255,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun saveTrade(fund: FundData, data: TradeData) {
-        val trade = PendingTrade(
-            id = "${fund.code}-${System.currentTimeMillis()}",
-            fundCode = fund.code,
-            fundName = fund.name,
-            type = data.type,
-            share = data.share,
-            amount = data.amount,
-            feeRate = data.feeRate,
-            feeMode = data.feeMode,
-            feeValue = data.feeValue,
-            date = data.date,
-            isAfter3pm = data.isAfter3pm
-        )
-        val updated = pendingTrades.value + trade
-        pendingTrades.value = updated
-        repo.savePendingTrades(updated)
+        val tradeDate = runCatching { LocalDate.parse(data.date, dateFormatter) }.getOrNull() ?: return
+        val today = LocalDate.now(chinaZone)
+        if (tradeDate.isAfter(today)) return
 
-        applyTradeToHolding(fund, data)
+        viewModelScope.launch {
+            val nav = data.price?.takeIf { it > 0 }
+            if (nav != null) {
+                applyTradeToHolding(fund.code, data, nav)
+            } else {
+                enqueuePendingTrade(fund, data)
+            }
+        }
     }
 
-    private fun applyTradeToHolding(fund: FundData, data: TradeData) {
-        val nav = fund.gsz?.toDoubleOrNull() ?: fund.dwjz?.toDoubleOrNull() ?: return
+    private fun applyTradeToHolding(fundCode: String, data: TradeData, nav: Double) {
         if (nav <= 0) return
 
-        val current = holdings.value[fund.code]
+        val current = holdings.value[fundCode]
         val currentShare = current?.share ?: 0.0
         val currentCost = current?.cost ?: 0.0
 
         val newPosition: HoldingPosition? = if (data.type == "buy") {
             val amount = data.amount ?: return
             val feeRate = data.feeRate ?: 0.0
-            val fee = amount * feeRate / 100.0
-            val netAmount = amount - fee
+            // Original formula: fee is extracted FROM total amount (内扣)
+            val netAmount = amount / (1 + feeRate / 100.0)
             val buyShare = netAmount / nav
 
             val totalShare = currentShare + buyShare
-            val totalCostValue = currentShare * currentCost + netAmount
+            // Cost includes the full buy amount (with fees), matching original project
+            val buyCost = amount
+            val totalCostValue = currentShare * currentCost + buyCost
             val newCost = if (totalShare > 0) totalCostValue / totalShare else 0.0
             HoldingPosition(share = totalShare, cost = newCost)
         } else {
@@ -287,7 +299,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        saveHolding(fund.code, newPosition)
+        saveHolding(fundCode, newPosition)
     }
 
     fun saveHolding(code: String, position: HoldingPosition?) {
@@ -345,18 +357,113 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun startTradingDayMonitor() {
+        tradingDayJob?.cancel()
+        tradingDayJob = viewModelScope.launch {
+            while (isActive) {
+                isTradingDay.value = runCatching { TradingDayChecker.isTradingDay() }.getOrDefault(true)
+                delay(60_000L)
+            }
+        }
+    }
+
     private fun silentRefresh() {
         viewModelScope.launch {
             try {
                 val codes = funds.value.map { it.code }
                 if (codes.isEmpty()) return@launch
                 val refreshed = repo.fetchAndRefreshFunds(codes)
-                funds.value = refreshed
-                repo.saveFunds(refreshed)
+                val merged = mergeRefreshResult(funds.value, codes, refreshed)
+                funds.value = merged
+                repo.saveFunds(merged)
             } catch (e: Exception) {
                 _autoRefreshError.tryEmit("自动刷新失败: ${e.message ?: "未知错误"}")
+            } finally {
+                processPendingQueue()
             }
         }
+    }
+
+    private fun mergeRefreshResult(
+        previous: List<FundData>,
+        requestedCodes: List<String>,
+        refreshed: List<FundData>
+    ): List<FundData> {
+        val prevByCode = previous.associateBy { it.code }
+        val refreshedByCode = refreshed.associateBy { it.code }
+        return requestedCodes
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .mapNotNull { code -> refreshedByCode[code] ?: prevByCode[code] }
+    }
+
+    private suspend fun processPendingQueue() {
+        val pending = pendingTrades.value
+        if (pending.isEmpty()) return
+        val remaining = mutableListOf<PendingTrade>()
+
+        for (trade in pending) {
+            val nav = resolveTradeNav(trade.fundCode, trade.date, trade.isAfter3pm)
+            if (nav != null && nav > 0) {
+                val tradeData = TradeData(
+                    type = trade.type,
+                    amount = trade.amount,
+                    share = trade.share,
+                    feeRate = trade.feeRate,
+                    feeMode = trade.feeMode,
+                    feeValue = trade.feeValue,
+                    date = trade.date,
+                    isAfter3pm = trade.isAfter3pm
+                )
+                applyTradeToHolding(trade.fundCode, tradeData, nav)
+            } else {
+                remaining.add(trade)
+            }
+        }
+
+        pendingTrades.value = remaining
+        repo.savePendingTrades(remaining)
+    }
+
+    private suspend fun resolveTradeNav(code: String, date: String, isAfter3pm: Boolean): Double? {
+        val baseDate = runCatching { LocalDate.parse(date, dateFormatter) }.getOrNull() ?: return null
+        val queryDate = if (isAfter3pm) baseDate.plusDays(1) else baseDate
+        val result = repo.fetchSmartNetValue(code, queryDate.format(dateFormatter))
+        return result?.second?.takeIf { it > 0 }
+    }
+
+    private fun enqueuePendingTrade(fund: FundData, data: TradeData) {
+        val trade = PendingTrade(
+            id = "${fund.code}-${System.currentTimeMillis()}",
+            fundCode = fund.code,
+            fundName = fund.name,
+            type = data.type,
+            share = data.share,
+            amount = data.amount,
+            feeRate = data.feeRate,
+            feeMode = data.feeMode,
+            feeValue = data.feeValue,
+            date = data.date,
+            isAfter3pm = data.isAfter3pm
+        )
+        val updated = pendingTrades.value + trade
+        pendingTrades.value = updated
+        repo.savePendingTrades(updated)
+    }
+
+    private fun hasUsableFundData(fund: FundData): Boolean {
+        return !fund.dwjz.isNullOrBlank() ||
+            !fund.gsz.isNullOrBlank() ||
+            !fund.jzrq.isNullOrBlank() ||
+            !fund.gztime.isNullOrBlank() ||
+            fund.holdings.isNotEmpty()
+    }
+
+    override fun onCleared() {
+        autoRefreshJob?.cancel()
+        tradingDayJob?.cancel()
+        super.onCleared()
     }
 
     class Factory(private val application: Application) : ViewModelProvider.Factory {

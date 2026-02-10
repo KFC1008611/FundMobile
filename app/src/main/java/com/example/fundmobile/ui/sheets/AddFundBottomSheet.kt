@@ -143,6 +143,7 @@ class AddFundBottomSheet : BottomSheetDialogFragment() {
                 binding.tvFundName.text = item.NAME
                 binding.tvFundCodeType.text = "${item.CODE}  ${item.TYPE.orEmpty()}"
                 binding.checkSelect.isEnabled = !added
+                binding.checkSelect.setOnCheckedChangeListener(null)
                 binding.checkSelect.isChecked = isSelected(item.CODE)
                 binding.tvAdded.isVisible = added
                 binding.checkSelect.isVisible = !added

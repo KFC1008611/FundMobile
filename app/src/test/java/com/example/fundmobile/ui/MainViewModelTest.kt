@@ -20,6 +20,7 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -63,12 +64,22 @@ class MainViewModelTest {
         val quote = "v_sh000001=\"${(0..30).joinToString("~") { i -> if (i == 30) today else "x$i" }}\";"
         HttpClient.client = OkHttpClient.Builder()
             .addInterceptor { chain ->
+                val url = chain.request().url.toString()
+                val body = when {
+                    url.contains("qt.gtimg.cn/q=sh000001") -> quote
+                    url.contains("F10DataApi.aspx") -> {
+                        val date = Regex("""[?&]sdate=([^&]+)""").find(url)?.groupValues?.getOrNull(1) ?: "2024-01-15"
+                        val nav = if (date.endsWith("-16")) "1.5300" else "1.5200"
+                        """var apidata={content:"<table><tr><td>$date</td><td>$nav</td></tr></table>"};"""
+                    }
+                    else -> ""
+                }
                 Response.Builder()
                     .request(chain.request())
                     .protocol(Protocol.HTTP_1_1)
                     .code(200)
                     .message("OK")
-                    .body(quote.toResponseBody())
+                    .body(body.toResponseBody())
                     .build()
             }
             .build()
@@ -175,6 +186,41 @@ class MainViewModelTest {
     }
 
     @Test
+    fun addFunds_onlySuccessfulCodesBecomeFavorites() {
+        val today = LocalDate.now(ZoneId.of("Asia/Shanghai")).format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+        val indexQuote = "v_sh000001=\"${(0..30).joinToString("~") { i -> if (i == 30) today else "x$i" }}\";"
+        val validGz = """jsonpgz({"fundcode":"161725","name":"基金161725","dwjz":"1.5000","gsz":"1.5200","gztime":"2024-01-15 15:00","jzrq":"2024-01-14","gszzl":"1.33"});"""
+        val customClient = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val url = chain.request().url.toString()
+                val body = when {
+                    url.contains("qt.gtimg.cn/q=sh000001") -> indexQuote
+                    url.contains("fundgz.1234567.com.cn/js/161725.js") -> validGz
+                    else -> ""
+                }
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(body.toResponseBody())
+                    .build()
+            }
+            .build()
+
+        val previous = HttpClient.client
+        HttpClient.client = customClient
+        try {
+            viewModel.addFunds(listOf("161725", "999999"))
+            waitForAsyncWork()
+            assertTrue(viewModel.favorites.value.contains("161725"))
+            assertFalse(viewModel.favorites.value.contains("999999"))
+        } finally {
+            HttpClient.client = previous
+        }
+    }
+
+    @Test
     fun removeFundFromGroup_removesCode() {
         viewModel.updateGroups(listOf(FundGroup("g1", "组1", mutableListOf("161725", "110022"))))
         viewModel.removeFundFromGroup("g1", "110022")
@@ -233,6 +279,21 @@ class MainViewModelTest {
         viewModel.favorites.value = setOf(code)
         viewModel.groups.value = listOf(FundGroup("g1", "组1", mutableListOf(code, "110022")))
         viewModel.holdings.value = mapOf(code to HoldingPosition(100.0, 1.2))
+        viewModel.pendingTrades.value = listOf(
+            com.example.fundmobile.data.model.PendingTrade(
+                id = "p1",
+                fundCode = code,
+                fundName = "基金$code",
+                type = "buy",
+                share = null,
+                amount = 100.0,
+                feeRate = 0.0,
+                feeMode = null,
+                feeValue = null,
+                date = "2024-01-15",
+                isAfter3pm = false
+            )
+        )
 
         viewModel.removeFund(code)
 
@@ -240,6 +301,7 @@ class MainViewModelTest {
         assertFalse(viewModel.favorites.value.contains(code))
         assertFalse(viewModel.groups.value.first().codes.contains(code))
         assertFalse(viewModel.holdings.value.containsKey(code))
+        assertTrue(viewModel.pendingTrades.value.none { it.fundCode == code })
     }
 
     @Test
@@ -262,7 +324,7 @@ class MainViewModelTest {
     }
 
     @Test
-    fun displayFunds_allTab_showsFavoritesAndHoldings() {
+    fun displayFunds_allTab_showsAllAddedFunds() {
         val fund1 = sampleFund("161725")
         val fund2 = sampleFund("110022")
         val fund3 = sampleFund("003456")
@@ -274,17 +336,18 @@ class MainViewModelTest {
         val displayed = viewModel.displayFunds.value.map { it.code }
         assertTrue(displayed.contains("161725"))
         assertTrue(displayed.contains("110022"))
-        assertFalse(displayed.contains("003456"))
+        assertTrue(displayed.contains("003456"))
     }
 
     @Test
-    fun displayFunds_allTab_excludesFundNeitherFavNorHolding() {
+    fun displayFunds_allTab_showsFundEvenIfNeitherFavNorHolding() {
         viewModel.funds.value = listOf(sampleFund("161725"))
         viewModel.favorites.value = emptySet()
         viewModel.holdings.value = emptyMap()
         viewModel.setCurrentTab("all")
 
-        assertTrue(viewModel.displayFunds.value.isEmpty())
+        assertEquals(1, viewModel.displayFunds.value.size)
+        assertEquals("161725", viewModel.displayFunds.value[0].code)
     }
 
     @Test
@@ -390,6 +453,19 @@ class MainViewModelTest {
     }
 
     @Test
+    fun displayFunds_sortByHoldingDesc_noHoldingStaysBehindNegativeHolding() {
+        val holdingFund = sampleFund("161725")
+        val noHoldingFund = sampleFund("110022")
+        viewModel.funds.value = listOf(holdingFund, noHoldingFund)
+        viewModel.holdings.value = mapOf("161725" to HoldingPosition(100.0, 2.0))
+        viewModel.setCurrentTab("all")
+        viewModel.setSort("holding", "desc")
+
+        val displayed = viewModel.displayFunds.value.map { it.code }
+        assertEquals(listOf("161725", "110022"), displayed)
+    }
+
+    @Test
     fun setCurrentTab_holdingTab_works() {
         viewModel.setCurrentTab("holding")
         assertEquals("holding", viewModel.currentTab.value)
@@ -404,11 +480,13 @@ class MainViewModelTest {
         val tradeData = TradeData(
             type = "buy",
             amount = 10000.0,
+            price = 1.52,
             feeRate = 0.15,
             date = "2024-01-15",
             isAfter3pm = false
         )
         viewModel.saveTrade(fund, tradeData)
+        waitForAsyncWork()
 
         val holding = viewModel.holdings.value["161725"]
         assertTrue(holding != null)
@@ -425,11 +503,13 @@ class MainViewModelTest {
         val tradeData = TradeData(
             type = "buy",
             amount = 10000.0,
+            price = 1.52,
             feeRate = 0.0,
             date = "2024-01-15",
             isAfter3pm = false
         )
         viewModel.saveTrade(fund, tradeData)
+        waitForAsyncWork()
 
         val holding = viewModel.holdings.value["161725"]
         assertTrue(holding != null)
@@ -445,10 +525,12 @@ class MainViewModelTest {
         val tradeData = TradeData(
             type = "sell",
             share = 500.0,
+            price = 1.52,
             date = "2024-01-15",
             isAfter3pm = false
         )
         viewModel.saveTrade(fund, tradeData)
+        waitForAsyncWork()
 
         val holding = viewModel.holdings.value["161725"]
         assertTrue(holding != null)
@@ -465,17 +547,49 @@ class MainViewModelTest {
         val tradeData = TradeData(
             type = "sell",
             share = 500.0,
+            price = 1.52,
             date = "2024-01-15",
             isAfter3pm = false
         )
         viewModel.saveTrade(fund, tradeData)
+        waitForAsyncWork()
 
         assertFalse(viewModel.holdings.value.containsKey("161725"))
     }
 
     @Test
-    fun saveTrade_buy_recordsPendingTrade() {
+    fun saveTrade_buy_withPrice_doesNotCreatePendingTrade() {
         val fund = sampleFund("161725")
+        viewModel.funds.value = listOf(fund)
+
+        val tradeData = TradeData(
+            type = "buy",
+            amount = 10000.0,
+            price = 1.52,
+            feeRate = 0.15,
+            date = "2024-01-15",
+            isAfter3pm = false
+        )
+        viewModel.saveTrade(fund, tradeData)
+        waitForAsyncWork()
+
+        assertEquals(0, viewModel.pendingTrades.value.size)
+    }
+
+    @Test
+    fun saveTrade_buy_withoutPrice_createsPendingTrade() {
+        val fund = FundData(
+            code = "161725",
+            name = "基金161725",
+            dwjz = null,
+            gsz = null,
+            gztime = null,
+            jzrq = null,
+            gszzl = null,
+            zzl = null,
+            noValuation = true,
+            holdings = emptyList()
+        )
         viewModel.funds.value = listOf(fund)
 
         val tradeData = TradeData(
@@ -486,9 +600,123 @@ class MainViewModelTest {
             isAfter3pm = false
         )
         viewModel.saveTrade(fund, tradeData)
+        waitForAsyncWork()
 
         assertEquals(1, viewModel.pendingTrades.value.size)
         assertEquals("buy", viewModel.pendingTrades.value[0].type)
+        assertFalse(viewModel.holdings.value.containsKey("161725"))
+    }
+
+    @Test
+    fun saveTrade_futureDate_ignored() {
+        val fund = sampleFund("161725")
+        viewModel.funds.value = listOf(fund)
+        viewModel.saveHolding("161725", HoldingPosition(100.0, 1.4))
+
+        val futureDate = LocalDate.now(ZoneId.of("Asia/Shanghai")).plusDays(1).toString()
+        val tradeData = TradeData(
+            type = "sell",
+            share = 10.0,
+            price = 1.52,
+            date = futureDate,
+            isAfter3pm = false
+        )
+        viewModel.saveTrade(fund, tradeData)
+        waitForAsyncWork()
+
+        assertEquals(100.0, viewModel.holdings.value["161725"]?.share ?: 0.0, 0.001)
+        assertTrue(viewModel.pendingTrades.value.isEmpty())
+    }
+
+    @Test
+    fun saveTrade_buy_feeFormulaMatchesOriginal() {
+        val fund = sampleFund("161725")
+        viewModel.funds.value = listOf(fund)
+
+        val tradeData = TradeData(
+            type = "buy",
+            amount = 10000.0,
+            price = 1.52,
+            feeRate = 1.5,
+            date = "2024-01-15",
+            isAfter3pm = false
+        )
+        viewModel.saveTrade(fund, tradeData)
+        waitForAsyncWork()
+
+        val holding = viewModel.holdings.value["161725"]!!
+        val nav = 1.52
+        val expectedNetAmount = 10000.0 / (1 + 1.5 / 100.0)
+        val expectedShare = expectedNetAmount / nav
+        assertEquals(expectedShare, holding.share, 0.01)
+        val expectedCost = 10000.0 / expectedShare
+        assertEquals(expectedCost, holding.cost, 0.001)
+    }
+
+    @Test
+    fun saveTrade_buy_withPrice_usesProvidedNav() {
+        val fund = sampleFund("161725")
+        viewModel.funds.value = listOf(fund)
+
+        val tradeData = TradeData(
+            type = "buy",
+            amount = 1530.0,
+            price = 1.53,
+            feeRate = 0.0,
+            date = "2024-01-15",
+            isAfter3pm = true
+        )
+        viewModel.saveTrade(fund, tradeData)
+        waitForAsyncWork()
+
+        val holding = viewModel.holdings.value["161725"]!!
+        assertEquals(1000.0, holding.share, 0.01)
+    }
+
+    @Test
+    fun refreshAll_partialFailure_keepsPreviousFund() {
+        val fundA = sampleFund("161725")
+        val fundB = sampleFund("110022")
+        viewModel.funds.value = listOf(fundA, fundB)
+
+        val today = LocalDate.now(ZoneId.of("Asia/Shanghai")).format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+        val indexQuote = "v_sh000001=\"${(0..30).joinToString("~") { i -> if (i == 30) today else "x$i" }}\";"
+        val validGz = """jsonpgz({"fundcode":"161725","name":"刷新后161725","dwjz":"1.6000","gsz":"1.6200","gztime":"2024-01-15 15:00","jzrq":"2024-01-15","gszzl":"1.25"});"""
+
+        val previous = HttpClient.client
+        HttpClient.client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val url = chain.request().url.toString()
+                val body = when {
+                    url.contains("qt.gtimg.cn/q=sh000001") -> indexQuote
+                    url.contains("fundgz.1234567.com.cn/js/161725.js") -> validGz
+                    url.contains("fundgz.1234567.com.cn/js/110022.js") -> "not_jsonp"
+                    url.contains("qt.gtimg.cn/q=jj110022") -> "v_jj110022=\"1~\";"
+                    url.contains("FundSearchAPI.ashx") -> "cb({\"Datas\":[]})"
+                    else -> ""
+                }
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(body.toResponseBody())
+                    .build()
+            }
+            .build()
+
+        try {
+            viewModel.refreshAll()
+            waitForAsyncWork()
+
+            val fundsByCode = viewModel.funds.value.associateBy { it.code }
+            assertNotNull(fundsByCode["161725"])
+            assertNotNull(fundsByCode["110022"])
+            assertEquals("刷新后161725", fundsByCode["161725"]!!.name)
+            assertEquals("基金110022", fundsByCode["110022"]!!.name)
+        } finally {
+            HttpClient.client = previous
+        }
     }
 
     private fun sampleFund(code: String): FundData {
@@ -504,5 +732,9 @@ class MainViewModelTest {
             noValuation = false,
             holdings = emptyList()
         )
+    }
+
+    private fun waitForAsyncWork() {
+        Thread.sleep(120)
     }
 }

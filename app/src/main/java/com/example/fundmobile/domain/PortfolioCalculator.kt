@@ -41,10 +41,19 @@ object PortfolioCalculator {
                 profitToday = null
             }
         } else {
-            currentNav = fund.gsz?.toDoubleOrNull() ?: fund.dwjz?.toDoubleOrNull() ?: return null
+            val hasEstimatedPrice = (fund.estPricedCoverage > 0.05) && fund.estGsz != null
+            currentNav = if (hasEstimatedPrice) {
+                fund.estGsz
+            } else {
+                fund.gsz?.toDoubleOrNull() ?: fund.dwjz?.toDoubleOrNull()
+            } ?: return null
             if (canCalcTodayProfit) {
                 val amount = holding.share * currentNav
-                val rate = fund.gszzl ?: 0.0
+                val rate = if (hasEstimatedPrice) {
+                    fund.estGszzl ?: 0.0
+                } else {
+                    fund.gszzl ?: 0.0
+                }
                 profitToday = amount - (amount / (1 + rate / 100))
             } else {
                 profitToday = null

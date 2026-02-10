@@ -4,6 +4,7 @@ data class TradeData(
     val type: String,
     val amount: Double? = null,
     val share: Double? = null,
+    val price: Double? = null,
     val feeRate: Double? = null,
     val feeMode: String? = null,
     val feeValue: String? = null,

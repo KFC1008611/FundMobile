@@ -88,4 +88,137 @@ class FundApiTest {
         val result = FundApi.fetchStockQuotes(emptyList())
         assertTrue(result.isEmpty())
     }
+
+    @Test
+    fun fetchStockQuotes_shanghaiB9Prefix_usesShSymbol() = runTest {
+        HttpClient.client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val url = chain.request().url.toString()
+                assertTrue("Should contain s_sh900001", url.contains("s_sh900001"))
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("v_s_sh900001=\"1~测试股~900001~1.00~0.01~1.01~100~50~~\";".toResponseBody())
+                    .build()
+            }
+            .build()
+
+        val result = FundApi.fetchStockQuotes(listOf("900001"))
+        assertEquals(1.01, result["900001"]!!, 0.001)
+    }
+
+    @Test
+    fun fetchStockQuotes_hk5DigitCode_usesHkSymbol() = runTest {
+        HttpClient.client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val url = chain.request().url.toString()
+                assertTrue("Should contain s_hk00700", url.contains("s_hk00700"))
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("v_s_hk00700=\"1~腾讯控股~00700~350.00~5.00~2.50~100~50~~\";".toResponseBody())
+                    .build()
+            }
+            .build()
+
+        val result = FundApi.fetchStockQuotes(listOf("00700"))
+        assertEquals(2.50, result["00700"]!!, 0.001)
+    }
+
+    @Test
+    fun fetchFundData_withHoldingQuotes_calculatesEstimatedValuationFields() = runTest {
+        HttpClient.client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val url = chain.request().url.toString()
+                val body = when {
+                    url.contains("fundgz.1234567.com.cn/js/161725.js") -> {
+                        """jsonpgz({"fundcode":"161725","name":"基金161725","dwjz":"1.5000","gsz":"1.5100","gztime":"2024-01-15 14:30","jzrq":"2024-01-15","gszzl":"0.66"});"""
+                    }
+                    url.contains("qt.gtimg.cn/q=jj161725") -> {
+                        ""
+                    }
+                    url.contains("FundArchivesDatas.aspx?type=jjcc&code=161725") -> {
+                        """var apidata={content:"<table><thead><tr><th>股票代码</th><th>股票名称</th><th>占净值比例</th></tr></thead><tbody><tr><td>600519</td><td>贵州茅台</td><td>10.00%</td></tr><tr><td>000858</td><td>五粮液</td><td>5.00%</td></tr></tbody></table>"};"""
+                    }
+                    url.contains("qt.gtimg.cn/q=s_sh600519,s_sz000858") -> {
+                        """
+                        v_s_sh600519="1~贵州茅台~600519~1.00~0.00~2.00~0~0~~";
+                        v_s_sz000858="1~五粮液~000858~1.00~0.00~-1.00~0~0~~";
+                        """.trimIndent()
+                    }
+                    else -> ""
+                }
+
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(body.toResponseBody())
+                    .build()
+            }
+            .build()
+
+        val fund = FundApi.fetchFundData("161725")
+
+        assertEquals(1.0, fund.estGszzl!!, 0.0001)
+        assertEquals(1.515, fund.estGsz!!, 0.0001)
+        assertEquals(1.0, fund.estPricedCoverage, 0.0001)
+    }
+
+    @Test
+    fun fetchFundData_fallbackWithoutDwjz_throws() = runTest {
+        HttpClient.client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val url = chain.request().url.toString()
+                val body = when {
+                    url.contains("fundgz.1234567.com.cn/js/999999.js") -> "not_jsonp"
+                    url.contains("qt.gtimg.cn/q=jj999999") -> "v_jj999999=\"1~测试基金~999999~x~x~~x~0.00~2024-01-15 15:00:00~\";"
+                    url.contains("FundSearchAPI.ashx") -> "cb({\"Datas\":[]})"
+                    else -> ""
+                }
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(body.toResponseBody())
+                    .build()
+            }
+            .build()
+
+        val result = runCatching { FundApi.fetchFundData("999999") }
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun fetchFundData_fallbackUsesTencentName_whenSearchMisses() = runTest {
+        HttpClient.client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val url = chain.request().url.toString()
+                val body = when {
+                    url.contains("fundgz.1234567.com.cn/js/888888.js") -> "not_jsonp"
+                    url.contains("qt.gtimg.cn/q=jj888888") -> "v_jj888888=\"1~腾讯基金名~888888~x~x~1.2345~x~0.12~2024-01-15 15:00:00~\";"
+                    url.contains("FundSearchAPI.ashx") -> "cb({\"Datas\":[]})"
+                    else -> ""
+                }
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(body.toResponseBody())
+                    .build()
+            }
+            .build()
+
+        val fund = FundApi.fetchFundData("888888")
+        assertEquals("腾讯基金名", fund.name)
+        assertEquals("1.2345", fund.dwjz)
+        assertTrue(fund.noValuation)
+    }
 }
