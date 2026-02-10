@@ -79,8 +79,33 @@ class FundApiParsingTest {
     }
 
     @Test
+    fun toTencentStockSymbol_unknown6DigitPrefix_defaultsToShenzhen() {
+        assertEquals("s_sz200001", toTencentStockSymbolLikeFundApi("200001"))
+    }
+
+    @Test
     fun toTencentStockSymbol_invalidCode() {
         assertNull(toTencentStockSymbolLikeFundApi("abc"))
+    }
+
+    @Test
+    fun parseHoldingsHtml_withoutCodeAndNameHeader_doesNotInferName() {
+        val html = """
+            <table>
+              <thead>
+                <tr><th>序号</th><th>说明</th><th>占净值比例</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>1</td><td>说明文本</td><td>9.87%</td></tr>
+              </tbody>
+            </table>
+        """.trimIndent()
+
+        val result = parseHoldingsHtmlLikeFundApi(html)
+        assertEquals(1, result.size)
+        assertEquals("", result[0].code)
+        assertEquals("", result[0].name)
+        assertEquals("9.87%", result[0].weight)
     }
 
     private fun parseHoldingsHtmlLikeFundApi(html: String): List<StockHolding> {
@@ -113,7 +138,11 @@ class FundApiParsingTest {
 
                 val name = when {
                     idxName >= 0 && idxName < texts.size -> texts[idxName]
-                    else -> texts.firstOrNull { it.isNotBlank() && it != code && !it.contains("%") }.orEmpty()
+                    else -> if (code.isNotBlank()) {
+                        texts.firstOrNull { it.isNotBlank() && it != code && !it.contains("%") }.orEmpty()
+                    } else {
+                        ""
+                    }
                 }
 
                 val weightText = when {
@@ -154,10 +183,10 @@ class FundApiParsingTest {
         val clean = code.trim()
         if (!Regex("^\\d{6}$").matches(clean)) return null
         return when {
-            clean.startsWith("6") -> "s_sh$clean"
+            clean.startsWith("6") || clean.startsWith("9") -> "s_sh$clean"
             clean.startsWith("0") || clean.startsWith("3") -> "s_sz$clean"
             clean.startsWith("4") || clean.startsWith("8") -> "s_bj$clean"
-            else -> null
+            else -> "s_sz$clean"
         }
     }
 }

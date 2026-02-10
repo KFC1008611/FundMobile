@@ -130,6 +130,26 @@ class FundApiTest {
     }
 
     @Test
+    fun fetchStockQuotes_unknown6DigitPrefix_defaultsToSzSymbol() = runTest {
+        HttpClient.client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val url = chain.request().url.toString()
+                assertTrue("Should contain s_sz200001", url.contains("s_sz200001"))
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("v_s_sz200001=\"1~示例股票~200001~1.00~0.01~0.88~100~50~~\";".toResponseBody())
+                    .build()
+            }
+            .build()
+
+        val result = FundApi.fetchStockQuotes(listOf("200001"))
+        assertEquals(0.88, result["200001"]!!, 0.001)
+    }
+
+    @Test
     fun fetchFundData_withHoldingQuotes_calculatesEstimatedValuationFields() = runTest {
         HttpClient.client = OkHttpClient.Builder()
             .addInterceptor { chain ->

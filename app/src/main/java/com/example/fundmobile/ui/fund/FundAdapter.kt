@@ -96,12 +96,12 @@ class FundAdapter(
 
             val profit = PortfolioCalculator.getHoldingProfit(item, holding, tradingDay, today)
             binding.tvHoldingProfit.text = profit?.profitTotal?.let { String.format("%+.2f", it) } ?: "--"
-            binding.tvHoldingProfit.setTextColor(
-                ContextCompat.getColor(
-                    binding.root.context,
-                    if ((profit?.profitTotal ?: 0.0) >= 0) R.color.danger else R.color.success
-                )
-            )
+            val holdingColor = when {
+                profit?.profitTotal == null -> R.color.text_secondary
+                profit.profitTotal >= 0 -> R.color.danger
+                else -> R.color.success
+            }
+            binding.tvHoldingProfit.setTextColor(ContextCompat.getColor(binding.root.context, holdingColor))
 
             binding.root.setOnClickListener(null)
             

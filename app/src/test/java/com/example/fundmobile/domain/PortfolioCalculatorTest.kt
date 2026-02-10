@@ -171,7 +171,9 @@ class PortfolioCalculatorTest {
         )
 
         assertNotNull(result)
-        assertEquals(1500.0, result!!.profitTotal!!, 1e-6)
+        // cost=0 means no valid cost, profitTotal should be null (matching original project)
+        assertNull(result!!.profitTotal)
+        assertEquals(1500.0, result.amount, 1e-6)
     }
 
     @Test
@@ -241,5 +243,25 @@ class PortfolioCalculatorTest {
 
         assertEquals(500.0, result.totalHoldingReturn, 1e-6)
         assertEquals(5.0, result.returnRate, 1e-6)
+    }
+
+    @Test
+    fun calculateGroupSummary_zeroCostHolding_excludedFromReturnCalculation() {
+        val today = "2024-01-15"
+        val funds = listOf(
+            fund(code = "A", dwjz = "2.0", jzrq = today, zzl = 1.0),
+            fund(code = "B", dwjz = "1.5", jzrq = today, zzl = 1.0)
+        )
+        val holdings = mapOf(
+            "A" to HoldingPosition(share = 100.0, cost = 1.5),
+            "B" to HoldingPosition(share = 200.0, cost = 0.0)
+        )
+
+        val result = PortfolioCalculator.calculateGroupSummary(funds, holdings, isTradingDay = true, todayStr = today)
+
+        assertTrue(result.hasHolding)
+        assertEquals(500.0, result.totalAsset, 1e-6)
+        assertEquals(50.0, result.totalHoldingReturn, 1e-6)
+        assertEquals(33.333333333, result.returnRate, 1e-6)
     }
 }

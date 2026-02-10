@@ -61,7 +61,11 @@ object PortfolioCalculator {
         }
 
         val amount = holding.share * currentNav
-        val profitTotal = (currentNav - holding.cost) * holding.share
+        val profitTotal = if (holding.cost > 0) {
+            (currentNav - holding.cost) * holding.share
+        } else {
+            null
+        }
 
         return HoldingProfit(
             amount = amount,
@@ -97,9 +101,11 @@ object PortfolioCalculator {
                 hasHolding = true
                 totalAsset += profit.amount
                 totalProfitToday += profit.profitToday ?: 0.0
-                totalHoldingReturn += profit.profitTotal ?: 0.0
-                if (holding != null) {
-                    totalCost += holding.cost * holding.share
+                if (profit.profitTotal != null) {
+                    totalHoldingReturn += profit.profitTotal
+                    if (holding != null) {
+                        totalCost += holding.cost * holding.share
+                    }
                 }
             }
         }

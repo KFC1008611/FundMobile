@@ -282,7 +282,11 @@ object FundApi {
 
                 val name = when {
                     idxName >= 0 && idxName < texts.size -> texts[idxName]
-                    else -> texts.firstOrNull { it.isNotBlank() && it != code && !it.contains("%") }.orEmpty()
+                    else -> if (code.isNotBlank()) {
+                        texts.firstOrNull { it.isNotBlank() && it != code && !it.contains("%") }.orEmpty()
+                    } else {
+                        ""
+                    }
                 }
 
                 val weightText = when {
@@ -337,7 +341,7 @@ object FundApi {
             clean.startsWith("6") || clean.startsWith("9") -> "s_sh$clean"
             clean.startsWith("0") || clean.startsWith("3") -> "s_sz$clean"
             clean.startsWith("4") || clean.startsWith("8") -> "s_bj$clean"
-            else -> null
+            else -> "s_sz$clean"
         }
     }
 
