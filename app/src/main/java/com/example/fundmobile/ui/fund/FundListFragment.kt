@@ -65,6 +65,9 @@ class FundListFragment : Fragment() {
 
         binding.swipeRefresh.setColorSchemeResources(R.color.primary)
         binding.swipeRefresh.setOnRefreshListener { viewModel.refreshAll() }
+        binding.swipeRefresh.setOnChildScrollUpCallback { _, _ ->
+            binding.recyclerView.canScrollVertically(-1)
+        }
 
         observeUi()
     }
