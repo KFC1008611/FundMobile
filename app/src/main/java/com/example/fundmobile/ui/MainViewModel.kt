@@ -254,6 +254,40 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val updated = pendingTrades.value + trade
         pendingTrades.value = updated
         repo.savePendingTrades(updated)
+
+        applyTradeToHolding(fund, data)
+    }
+
+    private fun applyTradeToHolding(fund: FundData, data: TradeData) {
+        val nav = fund.gsz?.toDoubleOrNull() ?: fund.dwjz?.toDoubleOrNull() ?: return
+        if (nav <= 0) return
+
+        val current = holdings.value[fund.code]
+        val currentShare = current?.share ?: 0.0
+        val currentCost = current?.cost ?: 0.0
+
+        val newPosition: HoldingPosition? = if (data.type == "buy") {
+            val amount = data.amount ?: return
+            val feeRate = data.feeRate ?: 0.0
+            val fee = amount * feeRate / 100.0
+            val netAmount = amount - fee
+            val buyShare = netAmount / nav
+
+            val totalShare = currentShare + buyShare
+            val totalCostValue = currentShare * currentCost + netAmount
+            val newCost = if (totalShare > 0) totalCostValue / totalShare else 0.0
+            HoldingPosition(share = totalShare, cost = newCost)
+        } else {
+            val sellShare = data.share ?: return
+            val newShare = (currentShare - sellShare).coerceAtLeast(0.0)
+            if (newShare <= 0.001) {
+                null
+            } else {
+                HoldingPosition(share = newShare, cost = currentCost)
+            }
+        }
+
+        saveHolding(fund.code, newPosition)
     }
 
     fun saveHolding(code: String, position: HoldingPosition?) {

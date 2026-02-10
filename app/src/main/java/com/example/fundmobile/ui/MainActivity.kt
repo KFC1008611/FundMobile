@@ -31,21 +31,18 @@ class MainActivity : AppCompatActivity() {
     private var tabMediator: TabLayoutMediator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        val targetNightMode = if (viewModel.darkMode.value) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
+        if (AppCompatDelegate.getDefaultNightMode() != targetNightMode) {
+            AppCompatDelegate.setDefaultNightMode(targetNightMode)
+        }
 
-        // 应用保存的主题设置
-        AppCompatDelegate.setDefaultNightMode(
-            if (viewModel.darkMode.value) AppCompatDelegate.MODE_NIGHT_YES
-            else AppCompatDelegate.MODE_NIGHT_NO
-        )
+        super.onCreate(savedInstanceState)
         
-        // 启用 edge-to-edge 显示模式
         WindowCompat.setDecorFitsSystemWindows(window, false)
         
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
-        // 设置系统栏内边距
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.setPadding(insets.left, insets.top, insets.right, insets.bottom)

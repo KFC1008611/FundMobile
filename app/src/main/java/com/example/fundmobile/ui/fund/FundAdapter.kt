@@ -1,7 +1,6 @@
 package com.example.fundmobile.ui.fund
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -17,13 +16,11 @@ import com.example.fundmobile.databinding.ItemFundListRowBinding
 import com.example.fundmobile.domain.PortfolioCalculator
 
 class FundAdapter(
-    private val onFavorite: (String) -> Unit,
     private val onToggleCollapse: (String) -> Unit,
     private val onHoldingAction: (FundData) -> Unit
 ) : ListAdapter<FundData, RecyclerView.ViewHolder>(Diff) {
 
     private var viewMode: String = "card"
-    private var favorites: Set<String> = emptySet()
     private var collapsed: Set<String> = emptySet()
     private var holdings: Map<String, HoldingPosition> = emptyMap()
     private var isTradingDay: Boolean = true
@@ -42,14 +39,14 @@ class FundAdapter(
             ListVH(binding, onHoldingAction)
         } else {
             val binding = ItemFundCardBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            CardVH(binding, onFavorite, onToggleCollapse, onHoldingAction)
+            CardVH(binding, onToggleCollapse, onHoldingAction)
         }
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val item = getItem(position)
         if (holder is CardVH) {
-            holder.bind(item, favorites.contains(item.code), collapsed.contains(item.code), holdings[item.code], isTradingDay, todayStr)
+            holder.bind(item, collapsed.contains(item.code), holdings[item.code], isTradingDay, todayStr)
         } else if (holder is ListVH) {
             holder.bind(item, holdings[item.code], isTradingDay, todayStr)
         }
@@ -58,11 +55,6 @@ class FundAdapter(
     fun submitViewMode(mode: String) {
         if (viewMode == mode) return
         viewMode = mode
-        notifyDataSetChanged()
-    }
-
-    fun submitFavorites(value: Set<String>) {
-        favorites = value
         notifyDataSetChanged()
     }
 
@@ -113,7 +105,6 @@ class FundAdapter(
 
     class CardVH(
         private val binding: ItemFundCardBinding,
-        private val onFavorite: (String) -> Unit,
         private val onToggleCollapse: (String) -> Unit,
         private val onHoldingAction: (FundData) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
@@ -125,7 +116,6 @@ class FundAdapter(
 
         fun bind(
             item: FundData,
-            favorite: Boolean,
             collapsed: Boolean,
             holding: HoldingPosition?,
             tradingDay: Boolean,
@@ -143,15 +133,6 @@ class FundAdapter(
             binding.tvChange.text = String.format("%+.2f%%", change)
             binding.tvChange.setTextColor(ContextCompat.getColor(binding.root.context, if (up) R.color.danger else R.color.success))
             binding.tvChange.setBackgroundResource(if (up) R.drawable.bg_badge_up else R.drawable.bg_badge_down)
-
-            binding.btnFavorite.setImageResource(if (favorite) R.drawable.ic_star_filled else R.drawable.ic_star)
-            binding.btnFavorite.setColorFilter(
-                ContextCompat.getColor(
-                    binding.root.context,
-                    if (favorite) R.color.accent else R.color.text_secondary
-                )
-            )
-            binding.btnFavorite.setOnClickListener { onFavorite(item.code) }
 
             binding.btnExpand.setImageResource(if (collapsed) R.drawable.ic_expand else R.drawable.ic_collapse)
             binding.btnExpand.setOnClickListener { onToggleCollapse(item.code) }

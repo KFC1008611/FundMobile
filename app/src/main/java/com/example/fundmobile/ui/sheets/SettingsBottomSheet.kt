@@ -34,10 +34,11 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         binding.switchDarkMode.setOnCheckedChangeListener { _, checked ->
             binding.tvThemeDesc.setText(if (checked) R.string.theme_dark else R.string.theme_light)
             viewModel.setDarkMode(checked)
-            AppCompatDelegate.setDefaultNightMode(
-                if (checked) AppCompatDelegate.MODE_NIGHT_YES
-                else AppCompatDelegate.MODE_NIGHT_NO
-            )
+            val nightMode = if (checked) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
+            dismissAllowingStateLoss()
+            activity?.window?.decorView?.postDelayed({
+                AppCompatDelegate.setDefaultNightMode(nightMode)
+            }, 300)
         }
 
         binding.etRefreshSeconds.setText((viewModel.refreshMs.value / 1000L).toString())

@@ -50,7 +50,6 @@ class FundListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         adapter = FundAdapter(
-            onFavorite = { viewModel.toggleFavorite(it) },
             onToggleCollapse = { viewModel.toggleCollapse(it) },
             onHoldingAction = { fund ->
                 HoldingActionBottomSheet.newInstance(fund.code, fund.name)
@@ -93,12 +92,6 @@ class FundListFragment : Fragment() {
                 launch {
                     viewModel.refreshing.collect {
                         binding.swipeRefresh.isRefreshing = it
-                    }
-                }
-
-                launch {
-                    viewModel.favorites.collect {
-                        applyAdapterState()
                     }
                 }
 
@@ -151,7 +144,6 @@ class FundListFragment : Fragment() {
     private fun applyAdapterState() {
         val today = LocalDate.now(ZoneId.of("Asia/Shanghai")).toString()
         adapter.submitViewMode(viewModel.viewMode.value)
-        adapter.submitFavorites(viewModel.favorites.value)
         adapter.submitCollapsed(viewModel.collapsedCodes.value)
         adapter.submitHoldings(viewModel.holdings.value, viewModel.isTradingDay.value, today)
     }

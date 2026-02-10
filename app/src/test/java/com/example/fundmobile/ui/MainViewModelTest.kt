@@ -395,6 +395,102 @@ class MainViewModelTest {
         assertEquals("holding", viewModel.currentTab.value)
     }
 
+    @Test
+    fun saveTrade_buy_createsNewHolding() {
+        val fund = sampleFund("161725")
+        viewModel.funds.value = listOf(fund)
+        viewModel.favorites.value = setOf("161725")
+
+        val tradeData = TradeData(
+            type = "buy",
+            amount = 10000.0,
+            feeRate = 0.15,
+            date = "2024-01-15",
+            isAfter3pm = false
+        )
+        viewModel.saveTrade(fund, tradeData)
+
+        val holding = viewModel.holdings.value["161725"]
+        assertTrue(holding != null)
+        assertTrue(holding!!.share > 0)
+        assertTrue(holding.cost > 0)
+    }
+
+    @Test
+    fun saveTrade_buy_updatesExistingHolding() {
+        val fund = sampleFund("161725")
+        viewModel.funds.value = listOf(fund)
+        viewModel.saveHolding("161725", HoldingPosition(100.0, 1.4))
+
+        val tradeData = TradeData(
+            type = "buy",
+            amount = 10000.0,
+            feeRate = 0.0,
+            date = "2024-01-15",
+            isAfter3pm = false
+        )
+        viewModel.saveTrade(fund, tradeData)
+
+        val holding = viewModel.holdings.value["161725"]
+        assertTrue(holding != null)
+        assertTrue(holding!!.share > 100.0)
+    }
+
+    @Test
+    fun saveTrade_sell_reducesShares() {
+        val fund = sampleFund("161725")
+        viewModel.funds.value = listOf(fund)
+        viewModel.saveHolding("161725", HoldingPosition(1000.0, 1.4))
+
+        val tradeData = TradeData(
+            type = "sell",
+            share = 500.0,
+            date = "2024-01-15",
+            isAfter3pm = false
+        )
+        viewModel.saveTrade(fund, tradeData)
+
+        val holding = viewModel.holdings.value["161725"]
+        assertTrue(holding != null)
+        assertEquals(500.0, holding!!.share, 0.01)
+        assertEquals(1.4, holding.cost, 0.001)
+    }
+
+    @Test
+    fun saveTrade_sellAll_removesHolding() {
+        val fund = sampleFund("161725")
+        viewModel.funds.value = listOf(fund)
+        viewModel.saveHolding("161725", HoldingPosition(500.0, 1.4))
+
+        val tradeData = TradeData(
+            type = "sell",
+            share = 500.0,
+            date = "2024-01-15",
+            isAfter3pm = false
+        )
+        viewModel.saveTrade(fund, tradeData)
+
+        assertFalse(viewModel.holdings.value.containsKey("161725"))
+    }
+
+    @Test
+    fun saveTrade_buy_recordsPendingTrade() {
+        val fund = sampleFund("161725")
+        viewModel.funds.value = listOf(fund)
+
+        val tradeData = TradeData(
+            type = "buy",
+            amount = 10000.0,
+            feeRate = 0.15,
+            date = "2024-01-15",
+            isAfter3pm = false
+        )
+        viewModel.saveTrade(fund, tradeData)
+
+        assertEquals(1, viewModel.pendingTrades.value.size)
+        assertEquals("buy", viewModel.pendingTrades.value[0].type)
+    }
+
     private fun sampleFund(code: String): FundData {
         return FundData(
             code = code,
