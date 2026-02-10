@@ -22,12 +22,11 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnAddGroup"
+        style="@style/Widget.FundMobile.Button.Secondary"
         android:layout_width="match_parent"
-        android:layout_height="44dp"
+        android:layout_height="48dp"
         android:layout_marginTop="8dp"
-        android:background="@drawable/bg_button_secondary"
-        android:text="@string/new_group"
-        android:textColor="@color/text_primary" />
+        android:text="@string/new_group" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnSaveGroups"

@@ -1,27 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.FundMobile" parent="Theme.Material3.Dark.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+        <!-- Legacy color attributes -->
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryDark">@color/primary_dark</item>
         <item name="colorAccent">@color/accent</item>
-        <item name="colorOnPrimary">@color/bg</item>
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:textColorSecondary">@color/text_secondary</item>
         <item name="android:colorBackground">@color/bg</item>
+        <!-- Material3 color tokens — override purple defaults -->
+        <item name="colorPrimaryContainer">@color/primary_10</item>
+        <item name="colorOnPrimary">@color/bg</item>
+        <item name="colorOnPrimaryContainer">@color/primary</item>
+        <item name="colorSecondary">@color/primary</item>
+        <item name="colorSecondaryContainer">@color/primary_10</item>
+        <item name="colorOnSecondary">@color/bg</item>
+        <item name="colorOnSecondaryContainer">@color/primary</item>
+        <item name="colorTertiary">@color/accent</item>
+        <item name="colorTertiaryContainer">@color/primary_10</item>
+        <item name="colorOnTertiary">@color/bg</item>
+        <item name="colorOnTertiaryContainer">@color/accent</item>
         <item name="colorSurface">@color/card</item>
         <item name="colorOnSurface">@color/text_primary</item>
         <item name="colorSurfaceVariant">@color/card_surface</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorSurfaceContainer">@color/bg</item>
+        <item name="colorSurfaceContainerHigh">@color/card</item>
+        <item name="colorSurfaceContainerHighest">@color/card_surface</item>
+        <item name="colorSurfaceContainerLow">@color/bg</item>
+        <item name="colorSurfaceContainerLowest">@color/black</item>
+        <item name="colorOutline">@color/border</item>
+        <item name="colorOutlineVariant">@color/border</item>
+        <item name="colorSurfaceInverse">@color/text_primary</item>
+        <item name="colorOnSurfaceInverse">@color/bg</item>
+        <item name="colorPrimaryInverse">@color/primary_dark</item>
+        <item name="elevationOverlayEnabled">false</item>
+        <!-- Override MaterialSwitch colors -->
+        <item name="materialSwitchStyle">@style/Widget.FundMobile.Switch</item>
+    </style>
+
+    <style name="Widget.FundMobile.Switch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="thumbTint">@color/switch_thumb_color</item>
+        <item name="trackTint">@color/switch_track_color</item>
     </style>
 
     <style name="Widget.FundMobile.TabLayout" parent="Widget.Material3.TabLayout">
+        <item name="android:background">@color/bg</item>
         <item name="tabIndicatorColor">@color/primary</item>
         <item name="tabSelectedTextColor">@color/primary</item>
         <item name="tabTextColor">@color/text_secondary</item>
-        <item name="tabBackground">@color/transparent</item>
         <item name="tabRippleColor">@color/primary_10</item>
     </style>
 
@@ -29,6 +61,30 @@
         <item name="backgroundTint">@color/primary</item>
         <item name="android:textColor">@color/bg</item>
         <item name="cornerRadius">12dp</item>
+    </style>
+
+    <style name="Widget.FundMobile.Button.Secondary" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="strokeColor">@color/border</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="rippleColor">@color/card_hover</item>
+    </style>
+
+    <style name="Widget.FundMobile.Button.Danger" parent="Widget.Material3.Button">
+        <item name="backgroundTint">@color/danger</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="cornerRadius">12dp</item>
+    </style>
+
+    <style name="Widget.FundMobile.Button.DangerOutline" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="backgroundTint">@color/danger_10</item>
+        <item name="strokeColor">@color/danger</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textColor">@color/danger</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="rippleColor">@color/danger_10</item>
     </style>
 
     <style name="Widget.FundMobile.TextInput" parent="Widget.Material3.TextInputLayout.OutlinedBox">

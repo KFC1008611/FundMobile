@@ -15,7 +15,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/text_primary"
-            android:textSize="17sp"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
         <TextView
@@ -174,45 +174,43 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnQuarter"
+                    style="@style/Widget.FundMobile.Button.Secondary"
                     android:layout_width="0dp"
                     android:layout_height="36dp"
                     android:layout_marginEnd="4dp"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_button_secondary"
-                    android:text="1/4"
-                    android:textColor="@color/text_primary" />
+                    android:text="1/4" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnThird"
+                    style="@style/Widget.FundMobile.Button.Secondary"
                     android:layout_width="0dp"
                     android:layout_height="36dp"
                     android:layout_marginStart="2dp"
                     android:layout_marginEnd="2dp"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_button_secondary"
-                    android:text="1/3"
-                    android:textColor="@color/text_primary" />
+                    android:text="1/3" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnHalf"
+                    style="@style/Widget.FundMobile.Button.Secondary"
                     android:layout_width="0dp"
                     android:layout_height="36dp"
                     android:layout_marginStart="2dp"
                     android:layout_marginEnd="2dp"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_button_secondary"
-                    android:text="1/2"
-                    android:textColor="@color/text_primary" />
+                    android:text="1/2" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAll"
+                    style="@style/Widget.FundMobile.Button.Secondary"
                     android:layout_width="0dp"
                     android:layout_height="36dp"
                     android:layout_marginStart="4dp"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_button_secondary"
-                    android:text="全部"
-                    android:textColor="@color/text_primary" />
+                    android:text="\u5168\u90e8" />
+
+
             </LinearLayout>
 
             <TextView
@@ -296,13 +294,12 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCancel"
+                style="@style/Widget.FundMobile.Button.Secondary"
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_marginEnd="6dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_button_secondary"
-                android:text="@string/cancel"
-                android:textColor="@color/text_primary" />
+                android:text="@string/cancel" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnConfirm"

@@ -1,6 +1,6 @@
 package com.example.fundmobile.ui.sheets
 
-import android.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -39,7 +39,7 @@ class GroupManageBottomSheet : BottomSheetDialogFragment() {
         adapter.submit(viewModel.groups.value.toMutableList())
         adapter.onDelete = { group ->
             if (group.codes.isNotEmpty()) {
-                AlertDialog.Builder(requireContext())
+                MaterialAlertDialogBuilder(requireContext())
                     .setTitle(getString(R.string.delete))
                     .setMessage(getString(R.string.confirm_delete_group, group.name))
                     .setNegativeButton(R.string.cancel, null)

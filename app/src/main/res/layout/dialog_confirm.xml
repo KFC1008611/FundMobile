@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textColor="@color/text_primary"
-        android:textSize="17sp"
+        android:textSize="18sp"
         android:textStyle="bold" />
 
     <TextView
@@ -30,20 +30,18 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCancel"
+            style="@style/Widget.FundMobile.Button.Secondary"
             android:layout_width="wrap_content"
             android:layout_height="44dp"
-            android:background="@drawable/bg_button_secondary"
-            android:text="@string/cancel"
-            android:textColor="@color/text_primary" />
+            android:text="@string/cancel" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnConfirm"
+            style="@style/Widget.FundMobile.Button"
             android:layout_width="wrap_content"
             android:layout_height="44dp"
             android:layout_marginStart="8dp"
-            android:background="@drawable/bg_button_primary"
-            android:text="@string/confirm"
-            android:textColor="@color/bg" />
+            android:text="@string/confirm" />
     </LinearLayout>
 
 </LinearLayout>

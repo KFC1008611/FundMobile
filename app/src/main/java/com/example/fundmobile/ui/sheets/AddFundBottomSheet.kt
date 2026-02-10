@@ -41,10 +41,7 @@ class AddFundBottomSheet : BottomSheetDialogFragment() {
         isSelected = { code -> selectedCodes.contains(code) }
     )
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setStyle(STYLE_NORMAL, R.style.ThemeOverlay_FundMobile_BottomSheetDialog)
-    }
+    override fun getTheme(): Int = R.style.ThemeOverlay_FundMobile_BottomSheetDialog
 
     override fun onCreateView(
         inflater: LayoutInflater,

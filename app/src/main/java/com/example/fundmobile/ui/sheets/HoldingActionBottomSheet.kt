@@ -1,6 +1,6 @@
 package com.example.fundmobile.ui.sheets
 
-import android.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -44,7 +44,7 @@ class HoldingActionBottomSheet : BottomSheetDialogFragment() {
             dismiss()
         }
         binding.btnClearHolding.setOnClickListener {
-            AlertDialog.Builder(requireContext())
+            MaterialAlertDialogBuilder(requireContext())
                 .setTitle(getString(R.string.clear_holding))
                 .setMessage(getString(R.string.confirm_clear_holding, fundName))
                 .setNegativeButton(R.string.cancel, null)
@@ -55,7 +55,7 @@ class HoldingActionBottomSheet : BottomSheetDialogFragment() {
                 .show()
         }
         binding.btnDeleteFund.setOnClickListener {
-            AlertDialog.Builder(requireContext())
+            MaterialAlertDialogBuilder(requireContext())
                 .setTitle(getString(R.string.delete))
                 .setMessage(getString(R.string.confirm_delete_fund, fundName))
                 .setNegativeButton(R.string.cancel, null)

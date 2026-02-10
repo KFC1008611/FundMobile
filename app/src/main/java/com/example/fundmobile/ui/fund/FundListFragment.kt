@@ -29,6 +29,7 @@ class FundListFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var adapter: FundAdapter
     private val tabType: String by lazy { requireArguments().getString(ARG_TAB_TYPE) ?: "all" }
+    private var dividerDecoration: DividerItemDecoration? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -59,8 +60,6 @@ class FundListFragment : Fragment() {
 
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
-        val divider = DividerItemDecoration(requireContext(), RecyclerView.VERTICAL)
-        binding.recyclerView.addItemDecoration(divider)
 
         binding.swipeRefresh.setColorSchemeResources(R.color.primary)
         binding.swipeRefresh.setOnRefreshListener { viewModel.refreshAll() }
@@ -108,7 +107,8 @@ class FundListFragment : Fragment() {
                 }
 
                 launch {
-                    viewModel.viewMode.collect {
+                    viewModel.viewMode.collect { mode ->
+                        updateDivider(mode)
                         applyAdapterState()
                     }
                 }
@@ -138,6 +138,17 @@ class FundListFragment : Fragment() {
                     }
                 }
             }
+        }
+    }
+
+    private fun updateDivider(mode: String) {
+        dividerDecoration?.let { binding.recyclerView.removeItemDecoration(it) }
+        if (mode == "list") {
+            val divider = DividerItemDecoration(requireContext(), RecyclerView.VERTICAL)
+            dividerDecoration = divider
+            binding.recyclerView.addItemDecoration(divider)
+        } else {
+            dividerDecoration = null
         }
     }
 
