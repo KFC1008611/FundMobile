@@ -242,6 +242,159 @@ class MainViewModelTest {
         assertFalse(viewModel.holdings.value.containsKey(code))
     }
 
+    @Test
+    fun tabs_includeHoldingTab() {
+        val tabIds = viewModel.tabs.value.map { it.id }
+        assertEquals(listOf("all", "holding", "fav"), tabIds)
+    }
+
+    @Test
+    fun tabs_holdingTabTitleIsCorrect() {
+        val holdingTab = viewModel.tabs.value.first { it.id == "holding" }
+        assertEquals("持有", holdingTab.title)
+    }
+
+    @Test
+    fun tabs_orderWithGroups() {
+        viewModel.updateGroups(listOf(FundGroup("g1", "白酒")))
+        val tabIds = viewModel.tabs.value.map { it.id }
+        assertEquals(listOf("all", "holding", "fav", "g1"), tabIds)
+    }
+
+    @Test
+    fun displayFunds_allTab_showsFavoritesAndHoldings() {
+        val fund1 = sampleFund("161725")
+        val fund2 = sampleFund("110022")
+        val fund3 = sampleFund("003456")
+        viewModel.funds.value = listOf(fund1, fund2, fund3)
+        viewModel.favorites.value = setOf("161725")
+        viewModel.holdings.value = mapOf("110022" to HoldingPosition(100.0, 1.2))
+        viewModel.setCurrentTab("all")
+
+        val displayed = viewModel.displayFunds.value.map { it.code }
+        assertTrue(displayed.contains("161725"))
+        assertTrue(displayed.contains("110022"))
+        assertFalse(displayed.contains("003456"))
+    }
+
+    @Test
+    fun displayFunds_allTab_excludesFundNeitherFavNorHolding() {
+        viewModel.funds.value = listOf(sampleFund("161725"))
+        viewModel.favorites.value = emptySet()
+        viewModel.holdings.value = emptyMap()
+        viewModel.setCurrentTab("all")
+
+        assertTrue(viewModel.displayFunds.value.isEmpty())
+    }
+
+    @Test
+    fun displayFunds_allTab_deduplicatesFavAndHoldingOverlap() {
+        viewModel.funds.value = listOf(sampleFund("161725"))
+        viewModel.favorites.value = setOf("161725")
+        viewModel.holdings.value = mapOf("161725" to HoldingPosition(50.0, 1.0))
+        viewModel.setCurrentTab("all")
+
+        val displayed = viewModel.displayFunds.value
+        assertEquals(1, displayed.size)
+        assertEquals("161725", displayed[0].code)
+    }
+
+    @Test
+    fun displayFunds_holdingTab_showsOnlyFundsWithPositiveShares() {
+        val fund1 = sampleFund("161725")
+        val fund2 = sampleFund("110022")
+        viewModel.funds.value = listOf(fund1, fund2)
+        viewModel.favorites.value = setOf("161725", "110022")
+        viewModel.holdings.value = mapOf(
+            "161725" to HoldingPosition(100.0, 1.2),
+            "110022" to HoldingPosition(0.0, 0.0)
+        )
+        viewModel.setCurrentTab("holding")
+
+        val displayed = viewModel.displayFunds.value.map { it.code }
+        assertTrue(displayed.contains("161725"))
+        assertFalse(displayed.contains("110022"))
+    }
+
+    @Test
+    fun displayFunds_holdingTab_excludesZeroShareHoldings() {
+        val fund1 = sampleFund("161725")
+        viewModel.funds.value = listOf(fund1)
+        viewModel.favorites.value = setOf("161725")
+        viewModel.holdings.value = mapOf("161725" to HoldingPosition(0.0, 1.2))
+        viewModel.setCurrentTab("holding")
+
+        val displayed = viewModel.displayFunds.value.map { it.code }
+        assertFalse(displayed.contains("161725"))
+    }
+
+    @Test
+    fun displayFunds_holdingTab_emptyWhenNoHoldings() {
+        viewModel.funds.value = listOf(sampleFund("161725"))
+        viewModel.favorites.value = setOf("161725")
+        viewModel.holdings.value = emptyMap()
+        viewModel.setCurrentTab("holding")
+
+        assertTrue(viewModel.displayFunds.value.isEmpty())
+    }
+
+    @Test
+    fun displayFunds_holdingTab_disappearsWhenShareDropsToZero() {
+        viewModel.funds.value = listOf(sampleFund("161725"))
+        viewModel.favorites.value = setOf("161725")
+        viewModel.holdings.value = mapOf("161725" to HoldingPosition(100.0, 1.0))
+        viewModel.setCurrentTab("holding")
+        assertEquals(1, viewModel.displayFunds.value.size)
+
+        viewModel.saveHolding("161725", HoldingPosition(0.0, 1.0))
+
+        assertTrue(viewModel.displayFunds.value.isEmpty())
+    }
+
+    @Test
+    fun displayFunds_favTab_showsFavoritesOnly() {
+        val fund1 = sampleFund("161725")
+        val fund2 = sampleFund("110022")
+        viewModel.funds.value = listOf(fund1, fund2)
+        viewModel.favorites.value = setOf("161725")
+        viewModel.holdings.value = mapOf("110022" to HoldingPosition(100.0, 1.2))
+        viewModel.setCurrentTab("fav")
+
+        val displayed = viewModel.displayFunds.value.map { it.code }
+        assertTrue(displayed.contains("161725"))
+        assertFalse(displayed.contains("110022"))
+    }
+
+    @Test
+    fun displayFunds_favTab_showsFundWithHoldingIfAlsoFavorited() {
+        viewModel.funds.value = listOf(sampleFund("161725"))
+        viewModel.favorites.value = setOf("161725")
+        viewModel.holdings.value = mapOf("161725" to HoldingPosition(100.0, 1.2))
+        viewModel.setCurrentTab("fav")
+
+        val displayed = viewModel.displayFunds.value.map { it.code }
+        assertTrue(displayed.contains("161725"))
+    }
+
+    @Test
+    fun displayFunds_holdingAndFav_fundWithBothAppearsInBothTabs() {
+        viewModel.funds.value = listOf(sampleFund("161725"))
+        viewModel.favorites.value = setOf("161725")
+        viewModel.holdings.value = mapOf("161725" to HoldingPosition(100.0, 1.2))
+
+        viewModel.setCurrentTab("holding")
+        assertTrue(viewModel.displayFunds.value.any { it.code == "161725" })
+
+        viewModel.setCurrentTab("fav")
+        assertTrue(viewModel.displayFunds.value.any { it.code == "161725" })
+    }
+
+    @Test
+    fun setCurrentTab_holdingTab_works() {
+        viewModel.setCurrentTab("holding")
+        assertEquals("holding", viewModel.currentTab.value)
+    }
+
     private fun sampleFund(code: String): FundData {
         return FundData(
             code = code,

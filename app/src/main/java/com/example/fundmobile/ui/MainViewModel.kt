@@ -49,6 +49,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .combine(currentTab) { g, current ->
             val list = buildList {
                 add(TabItem("all", "全部"))
+                add(TabItem("holding", "持有"))
                 add(TabItem("fav", "自选"))
                 g.forEach { add(TabItem(it.id, it.name)) }
             }
@@ -57,12 +58,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             list
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, listOf(TabItem("all", "全部"), TabItem("fav", "自选")))
+        .stateIn(viewModelScope, SharingStarted.Eagerly, listOf(TabItem("all", "全部"), TabItem("holding", "持有"), TabItem("fav", "自选")))
 
     // combine only supports up to 5 flows, so we nest two combine calls
-    private val filterInputs = combine(funds, favorites, groups, currentTab) { allFunds, fav, groupList, tab ->
+    private val filterInputs = combine(funds, favorites, groups, currentTab, holdings) { allFunds, fav, groupList, tab, holdingMap ->
+        val holdingCodes = holdingMap.filter { it.value.share > 0 }.keys
         val filtered = when (tab) {
-            "all" -> allFunds
+            "all" -> allFunds.filter { fav.contains(it.code) || holdingCodes.contains(it.code) }
+            "holding" -> allFunds.filter { holdingCodes.contains(it.code) }
             "fav" -> allFunds.filter { fav.contains(it.code) }
             else -> {
                 val g = groupList.firstOrNull { it.id == tab }
@@ -157,6 +160,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val refreshed = repo.fetchAndRefreshFunds(mergedCodes)
                 funds.value = refreshed
                 repo.saveFunds(refreshed)
+
+                val updatedFav = favorites.value + codes
+                favorites.value = updatedFav
+                repo.saveFavorites(updatedFav)
             } finally {
                 refreshing.value = false
             }
