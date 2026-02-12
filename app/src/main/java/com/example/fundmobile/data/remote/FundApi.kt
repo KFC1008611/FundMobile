@@ -1,6 +1,7 @@
 package com.example.fundmobile.data.remote
 
 import com.example.fundmobile.data.model.FundData
+import com.example.fundmobile.data.model.NavHistoryEntry
 import com.example.fundmobile.data.model.SearchResult
 import com.example.fundmobile.data.model.StockHolding
 import com.google.gson.Gson
@@ -18,6 +19,9 @@ object FundApi {
     private val gson = Gson()
     private val chinaZone: ZoneId = ZoneId.of("Asia/Shanghai")
     private val dateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private const val HISTORY_BASE_URL = "https://fundf10.eastmoney.com/F10DataApi.aspx"
+    private const val PER_PAGE_LIMIT = 49
+    const val MAX_HISTORY_PAGES = 20
 
     suspend fun fetchFundGz(code: String): FundGzResult? {
         return runCatching {
@@ -98,6 +102,50 @@ object FundApi {
             val html = extractContentField(varContent) ?: return@runCatching null
             parseNetValueFromHtml(html, date)
         }.getOrNull()
+    }
+
+    /**
+     * 分页拉取基金历史净值。
+     * EastMoney API per 参数最大有效值为 49，超过会回退到默认 ~20 条。
+     * 本方法自动翻页合并所有数据，[maxPages] 防止无限翻页。
+     */
+    suspend fun fetchFundNetHistory(
+        code: String,
+        startDate: String? = null,
+        endDate: String? = null,
+        maxPages: Int = MAX_HISTORY_PAGES
+    ): List<NavHistoryEntry> {
+        return runCatching {
+            val allEntries = mutableListOf<NavHistoryEntry>()
+            var currentPage = 1
+            var totalPages = 1
+
+            while (currentPage <= totalPages && currentPage <= maxPages) {
+                val url = buildString {
+                    append("$HISTORY_BASE_URL?type=lsjz&code=$code&page=$currentPage&per=$PER_PAGE_LIMIT")
+                    if (startDate != null) append("&sdate=$startDate")
+                    if (endDate != null) append("&edate=$endDate")
+                }
+                val raw = HttpClient.getString(url)
+                val varContent = JsonpParser.extractVarContent(raw, "apidata") ?: break
+                val html = extractContentField(varContent) ?: break
+
+                val entries = parseNetHistoryHtml(html)
+                if (entries.isEmpty()) break
+                allEntries.addAll(entries)
+
+                if (currentPage == 1) {
+                    totalPages = parseTotalPages(varContent)
+                }
+                currentPage++
+            }
+            allEntries
+        }.getOrElse { emptyList() }
+    }
+
+    internal fun parseTotalPages(varContent: String): Int {
+        val match = Regex("""pages\s*:\s*(\d+)""").find(varContent)
+        return match?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 1
     }
 
     suspend fun fetchSmartFundNetValue(code: String, startDate: String): Pair<String, Double>? {
@@ -321,6 +369,22 @@ object FundApi {
             }
             null
         }.getOrNull()
+    }
+
+    private fun parseNetHistoryHtml(html: String): List<NavHistoryEntry> {
+        if (html.isBlank() || html.contains("暂无数据")) return emptyList()
+        return runCatching {
+            val document = Jsoup.parse(html)
+            val rows = document.select("tbody tr").ifEmpty { document.select("tr") }
+            rows.mapNotNull { row ->
+                val tds = row.select("td")
+                if (tds.size < 2) return@mapNotNull null
+                val date = tds[0].text().trim()
+                val nav = tds[1].text().trim().toDoubleOrNull() ?: return@mapNotNull null
+                if (date.isBlank()) return@mapNotNull null
+                NavHistoryEntry(date = date, nav = nav)
+            }
+        }.getOrElse { emptyList() }
     }
 
     private fun extractContentField(varContent: String): String? {

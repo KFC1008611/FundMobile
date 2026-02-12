@@ -4,6 +4,7 @@ import com.example.fundmobile.data.local.PrefsStore
 import com.example.fundmobile.data.model.FundData
 import com.example.fundmobile.data.model.FundGroup
 import com.example.fundmobile.data.model.HoldingPosition
+import com.example.fundmobile.data.model.NavHistoryEntry
 import com.example.fundmobile.data.model.PendingTrade
 import com.example.fundmobile.data.model.SearchResult
 import com.example.fundmobile.data.remote.FundApi
@@ -40,6 +41,10 @@ class FundRepository(private val prefsStore: PrefsStore) {
 
     suspend fun fetchSmartNetValue(code: String, startDate: String): Pair<String, Double>? {
         return FundApi.fetchSmartFundNetValue(code, startDate)
+    }
+
+    suspend fun fetchFundNetHistory(code: String, startDate: String? = null, endDate: String? = null): List<NavHistoryEntry> {
+        return FundApi.fetchFundNetHistory(code, startDate, endDate)
     }
 
     fun saveFunds(funds: List<FundData>) = prefsStore.saveFunds(funds)

@@ -108,6 +108,86 @@ class FundApiParsingTest {
         assertEquals("9.87%", result[0].weight)
     }
 
+    @Test
+    fun parseNetHistoryHtml_multipleRows_parsesAll() {
+        val html = """
+            <table>
+              <thead><tr><th>净值日期</th><th>单位净值</th><th>累计净值</th></tr></thead>
+              <tbody>
+                <tr><td>2024-01-15</td><td>1.5000</td><td>2.0000</td></tr>
+                <tr><td>2024-01-14</td><td>1.4800</td><td>1.9800</td></tr>
+                <tr><td>2024-01-13</td><td>1.4900</td><td>1.9900</td></tr>
+              </tbody>
+            </table>
+        """.trimIndent()
+
+        val result = parseNetHistoryHtmlLikeFundApi(html)
+        assertEquals(3, result.size)
+        assertEquals("2024-01-15", result[0].date)
+        assertEquals(1.5, result[0].nav, 1e-6)
+        assertEquals("2024-01-14", result[1].date)
+        assertEquals(1.48, result[1].nav, 1e-6)
+        assertEquals("2024-01-13", result[2].date)
+        assertEquals(1.49, result[2].nav, 1e-6)
+    }
+
+    @Test
+    fun parseNetHistoryHtml_emptyTable_returnsEmpty() {
+        val html = "<table><thead><tr><th>净值日期</th></tr></thead><tbody></tbody></table>"
+        assertEquals(emptyList<Any>(), parseNetHistoryHtmlLikeFundApi(html))
+    }
+
+    @Test
+    fun parseNetHistoryHtml_noData_returnsEmpty() {
+        val html = "<div>暂无数据</div>"
+        assertEquals(emptyList<Any>(), parseNetHistoryHtmlLikeFundApi(html))
+    }
+
+    @Test
+    fun parseNetHistoryHtml_invalidNav_skipsRow() {
+        val html = """
+            <table>
+              <tbody>
+                <tr><td>2024-01-15</td><td>1.5000</td></tr>
+                <tr><td>2024-01-14</td><td>--</td></tr>
+              </tbody>
+            </table>
+        """.trimIndent()
+
+        val result = parseNetHistoryHtmlLikeFundApi(html)
+        assertEquals(1, result.size)
+        assertEquals("2024-01-15", result[0].date)
+    }
+
+    @Test
+    fun parseTotalPages_standardFormat_extractsPages() {
+        val input = """content:"<table>...</table>",records:2611,pages:54,curpage:1"""
+        assertEquals(54, FundApi.parseTotalPages(input))
+    }
+
+    @Test
+    fun parseTotalPages_singlePage_returns1() {
+        val input = """content:"<table>...</table>",records:20,pages:1,curpage:1"""
+        assertEquals(1, FundApi.parseTotalPages(input))
+    }
+
+    @Test
+    fun parseTotalPages_withSpaces_extractsPages() {
+        val input = """content:"<table>...</table>", records: 100, pages : 3, curpage: 1"""
+        assertEquals(3, FundApi.parseTotalPages(input))
+    }
+
+    @Test
+    fun parseTotalPages_noPages_returns1() {
+        val input = """content:"<table>...</table>",records:20"""
+        assertEquals(1, FundApi.parseTotalPages(input))
+    }
+
+    @Test
+    fun parseTotalPages_emptyInput_returns1() {
+        assertEquals(1, FundApi.parseTotalPages(""))
+    }
+
     private fun parseHoldingsHtmlLikeFundApi(html: String): List<StockHolding> {
         if (html.isBlank() || html.contains("暂无数据")) return emptyList()
         return runCatching {
@@ -177,6 +257,22 @@ class FundApiParsingTest {
             }
             null
         }.getOrNull()
+    }
+
+    private fun parseNetHistoryHtmlLikeFundApi(html: String): List<com.example.fundmobile.data.model.NavHistoryEntry> {
+        if (html.isBlank() || html.contains("暂无数据")) return emptyList()
+        return runCatching {
+            val document = Jsoup.parse(html)
+            val rows = document.select("tbody tr").ifEmpty { document.select("tr") }
+            rows.mapNotNull { row ->
+                val tds = row.select("td")
+                if (tds.size < 2) return@mapNotNull null
+                val date = tds[0].text().trim()
+                val nav = tds[1].text().trim().toDoubleOrNull() ?: return@mapNotNull null
+                if (date.isBlank()) return@mapNotNull null
+                com.example.fundmobile.data.model.NavHistoryEntry(date = date, nav = nav)
+            }
+        }.getOrElse { emptyList() }
     }
 
     private fun toTencentStockSymbolLikeFundApi(code: String): String? {
