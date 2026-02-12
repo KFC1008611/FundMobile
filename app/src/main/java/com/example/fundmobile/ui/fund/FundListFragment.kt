@@ -29,7 +29,6 @@ class FundListFragment : Fragment() {
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var adapter: FundAdapter
     private val tabType: String by lazy { requireArguments().getString(ARG_TAB_TYPE) ?: "all" }
-    private var dividerDecoration: DividerItemDecoration? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -51,7 +50,9 @@ class FundListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         adapter = FundAdapter(
-            onToggleCollapse = { viewModel.toggleCollapse(it) },
+            onFundClick = { fund ->
+                FundDetailActivity.start(requireContext(), fund.code, fund.name)
+            },
             onHoldingAction = { fund ->
                 HoldingActionBottomSheet.newInstance(fund.code, fund.name)
                     .show(parentFragmentManager, "holdingAction")
@@ -60,6 +61,9 @@ class FundListFragment : Fragment() {
 
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
+        binding.recyclerView.addItemDecoration(
+            DividerItemDecoration(requireContext(), RecyclerView.VERTICAL)
+        )
 
         binding.swipeRefresh.setColorSchemeResources(R.color.primary)
         binding.swipeRefresh.setOnRefreshListener { viewModel.refreshAll() }
@@ -95,20 +99,7 @@ class FundListFragment : Fragment() {
                 }
 
                 launch {
-                    viewModel.collapsedCodes.collect {
-                        applyAdapterState()
-                    }
-                }
-
-                launch {
                     viewModel.holdings.collect {
-                        applyAdapterState()
-                    }
-                }
-
-                launch {
-                    viewModel.viewMode.collect { mode ->
-                        updateDivider(mode)
                         applyAdapterState()
                     }
                 }
@@ -141,21 +132,8 @@ class FundListFragment : Fragment() {
         }
     }
 
-    private fun updateDivider(mode: String) {
-        dividerDecoration?.let { binding.recyclerView.removeItemDecoration(it) }
-        if (mode == "list") {
-            val divider = DividerItemDecoration(requireContext(), RecyclerView.VERTICAL)
-            dividerDecoration = divider
-            binding.recyclerView.addItemDecoration(divider)
-        } else {
-            dividerDecoration = null
-        }
-    }
-
     private fun applyAdapterState() {
         val today = LocalDate.now(ZoneId.of("Asia/Shanghai")).toString()
-        adapter.submitViewMode(viewModel.viewMode.value)
-        adapter.submitCollapsed(viewModel.collapsedCodes.value)
         adapter.submitHoldings(viewModel.holdings.value, viewModel.isTradingDay.value, today)
     }
 

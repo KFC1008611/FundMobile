@@ -61,4 +61,8 @@
     <string name="confirm_delete_fund_long_press">长按删除基金</string>
     <string name="confirm_delete_group">确定要删除分组 %1$s 吗？\n分组内的基金不会被删除。</string>
     <string name="confirm_clear_holding">确定要清空 %1$s 的持仓数据吗？</string>
+    <string name="nav_home">基金</string>
+    <string name="nav_metals">贵金属</string>
+    <string name="nav_indices">市场指数</string>
+    <string name="nav_news">资讯</string>
 </resources>

@@ -1,115 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg">
 
-    <ProgressBar
-        android:id="@+id/refreshLine"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="2dp"
-        android:indeterminate="true"
-        android:indeterminateTint="@color/primary"
-        android:visibility="gone" />
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/nav_host_fragment"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/bottom_nav"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
-
-        <LinearLayout
-            android:id="@+id/topBar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingTop="8dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="8dp">
-
-            <TextView
-                android:id="@+id/tvAppName"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="基估宝"
-                android:textColor="@color/text_primary"
-                android:textSize="22sp"
-                android:textStyle="bold" />
-
-            <ImageButton
-                android:id="@+id/btnSort"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginEnd="6dp"
-                android:background="@drawable/bg_input"
-                android:contentDescription="@string/sort_default"
-                android:padding="8dp"
-                android:src="@drawable/ic_sort"
-                app:tint="@color/text_secondary" />
-
-            <ImageButton
-                android:id="@+id/btnViewMode"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginEnd="6dp"
-                android:background="@drawable/bg_input"
-                android:contentDescription="@string/view_card"
-                android:padding="8dp"
-                android:src="@drawable/ic_card_view"
-                app:tint="@color/text_secondary" />
-
-            <ImageButton
-                android:id="@+id/btnRefresh"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginEnd="6dp"
-                android:background="@drawable/bg_input"
-                android:contentDescription="@string/refresh"
-                android:padding="8dp"
-                android:src="@drawable/ic_refresh"
-                app:tint="@color/text_secondary" />
-
-            <ImageButton
-                android:id="@+id/btnSettings"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="@drawable/bg_input"
-                android:contentDescription="@string/settings"
-                android:padding="8dp"
-                android:src="@drawable/ic_settings"
-                app:tint="@color/text_secondary" />
-        </LinearLayout>
-
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tabLayout"
-            style="@style/Widget.FundMobile.TabLayout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:tabIndicator="@drawable/bg_tab_indicator"
-            app:tabIndicatorGravity="bottom"
-            app:tabMode="scrollable"
-            app:tabRippleColor="@color/primary_10" />
-
-        <androidx.viewpager2.widget.ViewPager2
-            android:id="@+id/viewPager"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-    </LinearLayout>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabAddFund"
-        android:layout_width="wrap_content"
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_nav"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="20dp"
-        android:contentDescription="@string/add_fund"
-        android:src="@drawable/ic_add"
-        app:backgroundTint="@color/primary"
-        app:tint="@color/bg" />
+        android:background="@color/card"
+        app:menu="@menu/bottom_nav_menu"
+        app:itemIconTint="@color/primary"
+        app:itemTextColor="@color/primary"
+        app:labelVisibilityMode="labeled"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

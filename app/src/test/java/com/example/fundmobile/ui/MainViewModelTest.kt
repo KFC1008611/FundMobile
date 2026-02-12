@@ -128,19 +128,6 @@ class MainViewModelTest {
     }
 
     @Test
-    fun toggleCollapse_addsToCollapsed() {
-        viewModel.toggleCollapse("161725")
-        assertTrue(viewModel.collapsedCodes.value.contains("161725"))
-    }
-
-    @Test
-    fun toggleCollapse_removesFromCollapsed() {
-        viewModel.toggleCollapse("161725")
-        viewModel.toggleCollapse("161725")
-        assertFalse(viewModel.collapsedCodes.value.contains("161725"))
-    }
-
-    @Test
     fun addGroup_addsNewGroup() {
         viewModel.addGroup("白酒")
         assertTrue(viewModel.groups.value.any { it.name == "白酒" })
@@ -265,12 +252,6 @@ class MainViewModelTest {
         viewModel.setSort("yield", "asc")
         assertEquals("yield", viewModel.sortBy.value)
         assertEquals("asc", viewModel.sortOrder.value)
-    }
-
-    @Test
-    fun setViewMode_updatesViewMode() {
-        viewModel.setViewMode("list")
-        assertEquals("list", viewModel.viewMode.value)
     }
 
     @Test

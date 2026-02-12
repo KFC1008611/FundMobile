@@ -24,6 +24,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.fund.FundDetailActivity"
+            android:theme="@style/Theme.FundMobile" />
     </application>
 
 </manifest>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_home"
+        android:title="@string/nav_home" />
+    <item
+        android:id="@+id/nav_metals"
+        android:icon="@drawable/ic_gold"
+        android:title="@string/nav_metals" />
+    <item
+        android:id="@+id/nav_indices"
+        android:icon="@drawable/ic_chart"
+        android:title="@string/nav_indices" />
+    <item
+        android:id="@+id/nav_news"
+        android:icon="@drawable/ic_chat"
+        android:title="@string/nav_news" />
+</menu>

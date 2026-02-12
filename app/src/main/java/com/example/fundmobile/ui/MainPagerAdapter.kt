@@ -1,11 +1,10 @@
 package com.example.fundmobile.ui
 
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.example.fundmobile.ui.fund.FundListFragment
 
-class MainPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity) {
+class MainPagerAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
     private val tabs = mutableListOf<TabItem>()
 
     fun submitTabs(newTabs: List<TabItem>) {

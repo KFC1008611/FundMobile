@@ -46,7 +46,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val groups = MutableStateFlow<List<FundGroup>>(emptyList())
     val holdings = MutableStateFlow<Map<String, HoldingPosition>>(emptyMap())
     val pendingTrades = MutableStateFlow<List<PendingTrade>>(emptyList())
-    val collapsedCodes = MutableStateFlow<Set<String>>(emptySet())
     val refreshing = MutableStateFlow(false)
     private val _autoRefreshError = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val autoRefreshError: SharedFlow<String> = _autoRefreshError
@@ -55,7 +54,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val currentTab = MutableStateFlow("all")
     val sortBy = MutableStateFlow("default")
     val sortOrder = MutableStateFlow("desc")
-    val viewMode = MutableStateFlow("card")
     val isTradingDay = MutableStateFlow(true)
 
     val tabs: StateFlow<List<TabItem>> = groups
@@ -129,12 +127,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         funds.value = repo.loadFunds()
         favorites.value = repo.loadFavorites()
         groups.value = repo.loadGroups()
-        collapsedCodes.value = repo.loadCollapsedCodes()
         refreshMs.value = repo.loadRefreshMs()
         darkMode.value = repo.loadDarkMode()
         holdings.value = repo.loadHoldings()
         pendingTrades.value = repo.loadPendingTrades()
-        viewMode.value = repo.loadViewMode()
         sortBy.value = repo.loadSortBy()
         sortOrder.value = repo.loadSortOrder()
 
@@ -234,14 +230,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repo.saveFavorites(updated)
     }
 
-    fun toggleCollapse(code: String) {
-        val updated = collapsedCodes.value.toMutableSet().apply {
-            if (contains(code)) remove(code) else add(code)
-        }
-        collapsedCodes.value = updated
-        repo.saveCollapsedCodes(updated)
-    }
-
     fun setRefreshInterval(seconds: Int) {
         val clamped = seconds.coerceIn(5, 300)
         val ms = clamped * 1000L
@@ -260,11 +248,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         sortOrder.value = order
         repo.saveSortBy(by)
         repo.saveSortOrder(order)
-    }
-
-    fun setViewMode(mode: String) {
-        viewMode.value = mode
-        repo.saveViewMode(mode)
     }
 
     fun saveTrade(fund: FundData, data: TradeData) {
